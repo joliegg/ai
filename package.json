@@ -1,0 +1,37 @@
+{
+  "name": "@joliegg/ai",
+  "version": "0.1.0",
+  "description": "A set of tools to integrate AI into chats",
+  "author": "Diana Islas Ocampo",
+  "main": "dist/index.js",
+  "license": "HL3-CL",
+  "scripts": {
+    "publish": "yarn build && yarn docs",
+    "build": "yarn eslint . && rm -rf ./dist && yarn tsc --declaration",
+    "test": "node ./test/index.js",
+    "docs": "typedoc"
+  },
+  "engines": {
+    "node": "20.x"
+  },
+  "devDependencies": {
+    "@babel/eslint-parser": "^7.22.9",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "dotenv": "^16.3.1",
+    "eslint": "^8.45.0",
+    "typedoc": "^0.25.1",
+    "typescript": "^5.1.6"
+  },
+  "dependencies": {
+    "axios": "^1.4.0",
+    "openai": "^4.11.1"
+  },
+  "files": [
+    "README.md",
+    "LICENSE.md",
+    "package.json",
+    "src/*",
+    "dist/*"
+  ]
+}

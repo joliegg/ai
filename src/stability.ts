@@ -30,6 +30,7 @@ class Dream {
       width: parseInt(width),
       steps,
       samples: n,
+      style_preset: style,
     }, { headers: { Authorization: `Bearer ${this._apiKey}`, Accept: 'application/json' } });
 
     return data;

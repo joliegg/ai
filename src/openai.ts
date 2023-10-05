@@ -34,7 +34,7 @@ class ChatGPT {
       throw new Error(`Size must be one of ${ALLOWED_SIZES.join(', ')}`);
     }
 
-    return this._client?.images.generate({ prompt, n, size, response_format: 'url' });
+    return this._client?.images.generate({ prompt, n, size, response_format: 'b64_json' });
   }
 
 }

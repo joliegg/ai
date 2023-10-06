@@ -21,7 +21,7 @@
 <ul class="tsd-hierarchy">
 <li><span class="target">default</span></li></ul></section><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/joliegg/ai/blob/99e1dc3/src/stability.ts#L13">stability.ts:13</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/joliegg/ai/blob/99e1489/src/stability.ts#L15">stability.ts:15</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-index-accordion" open><summary class="tsd-accordion-summary tsd-index-summary">
@@ -39,6 +39,7 @@
 <section class="tsd-index-section">
 <h3 class="tsd-index-heading">Methods</h3>
 <div class="tsd-index-list"><a href="stability.default.html#generate" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>generate</span></a>
+<a href="stability.default.html#generateFromImage" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>generate<wbr/>From<wbr/>Image</span></a>
 </div></section></div></details></section></section>
 <section class="tsd-panel-group tsd-member-group">
 <h2>Constructors</h2>
@@ -56,25 +57,25 @@
 <h5><span class="tsd-kind-parameter">engine</span>: <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> = &#39;stable-diffusion-xl-1024-v1-0&#39;</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a href="stability.default.html" class="tsd-signature-type tsd-kind-class">default</a></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/joliegg/ai/blob/99e1dc3/src/stability.ts#L18">stability.ts:18</a></li></ul></aside></li></ul></section></section>
+<li>Defined in <a href="https://github.com/joliegg/ai/blob/99e1489/src/stability.ts#L20">stability.ts:20</a></li></ul></aside></li></ul></section></section>
 <section class="tsd-panel-group tsd-member-group">
 <h2>Properties</h2>
 <section class="tsd-panel tsd-member tsd-is-private"><a id="_apiKey" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagPrivate">Private</code> <code class="tsd-tag ts-flagOptional">Optional</code> <span>_api<wbr/>Key</span><a href="#_apiKey" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">_api<wbr/>Key</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/joliegg/ai/blob/99e1dc3/src/stability.ts#L14">stability.ts:14</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/joliegg/ai/blob/99e1489/src/stability.ts#L16">stability.ts:16</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-private"><a id="_engine" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagPrivate">Private</code> <code class="tsd-tag ts-flagOptional">Optional</code> <span>_engine</span><a href="#_engine" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">_engine</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/joliegg/ai/blob/99e1dc3/src/stability.ts#L15">stability.ts:15</a></li></ul></aside></section></section>
+<li>Defined in <a href="https://github.com/joliegg/ai/blob/99e1489/src/stability.ts#L17">stability.ts:17</a></li></ul></aside></section></section>
 <section class="tsd-panel-group tsd-member-group">
 <h2>Methods</h2>
 <section class="tsd-panel tsd-member"><a id="generate" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>generate</span><a href="#generate" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="generate.generate-1"><span class="tsd-kind-call-signature">generate</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">prompt</span>, <span class="tsd-kind-parameter">n</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">size</span>, <span class="tsd-kind-parameter">style</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">steps</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/stability.DreamResponse.html" class="tsd-signature-type tsd-kind-interface">DreamResponse</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">&gt;</span><a href="#generate.generate-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="generate.generate-1"><span class="tsd-kind-call-signature">generate</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">prompt</span>, <span class="tsd-kind-parameter">n</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">size</span>, <span class="tsd-kind-parameter">style</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">steps</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">scale</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/stability.DreamResponse.html" class="tsd-signature-type tsd-kind-interface">DreamResponse</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">&gt;</span><a href="#generate.generate-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -88,10 +89,39 @@
 <li>
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">style</span>: <a href="../types/stability.Style.html" class="tsd-signature-type tsd-kind-type-alias">Style</a></h5></li>
 <li>
-<h5><span class="tsd-kind-parameter">steps</span>: <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol"> = 50</span></h5></li></ul></div>
+<h5><span class="tsd-kind-parameter">steps</span>: <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol"> = 50</span></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">scale</span>: <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol"> = 7</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/stability.DreamResponse.html" class="tsd-signature-type tsd-kind-interface">DreamResponse</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/joliegg/ai/blob/99e1dc3/src/stability.ts#L23">stability.ts:23</a></li></ul></aside></li></ul></section></section></div>
+<li>Defined in <a href="https://github.com/joliegg/ai/blob/99e1489/src/stability.ts#L25">stability.ts:25</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="generateFromImage" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>generate<wbr/>From<wbr/>Image</span><a href="#generateFromImage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="generateFromImage.generateFromImage-1"><span class="tsd-kind-call-signature">generate<wbr/>From<wbr/>Image</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">image</span>, <span class="tsd-kind-parameter">prompt</span>, <span class="tsd-kind-parameter">imageStrength</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">n</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">size</span>, <span class="tsd-kind-parameter">style</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">steps</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">scale</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/stability.DreamResponse.html" class="tsd-signature-type tsd-kind-interface">DreamResponse</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">&gt;</span><a href="#generateFromImage.generateFromImage-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">image</span>: <span class="tsd-signature-type">string</span></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">prompt</span>: <span class="tsd-signature-type">string</span></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">imageStrength</span>: <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol"> = 0.35</span></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">n</span>: <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol"> = 1</span></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">size</span>: <a href="../types/stability.Size.html" class="tsd-signature-type tsd-kind-type-alias">Size</a></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">style</span>: <a href="../types/stability.Style.html" class="tsd-signature-type tsd-kind-type-alias">Style</a></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">steps</span>: <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol"> = 50</span></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">scale</span>: <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol"> = 7</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/stability.DreamResponse.html" class="tsd-signature-type tsd-kind-interface">DreamResponse</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/joliegg/ai/blob/99e1489/src/stability.ts#L42">stability.ts:42</a></li></ul></aside></li></ul></section></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
@@ -114,7 +144,8 @@
 <li><a href="#constructor" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-512"></use></svg><span>constructor</span></a></li>
 <li><a href="#_apiKey" class="tsd-is-private"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>_api<wbr/>Key</span></a></li>
 <li><a href="#_engine" class="tsd-is-private"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>_engine</span></a></li>
-<li><a href="#generate" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>generate</span></a></li></ul></div></details></div>
+<li><a href="#generate" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>generate</span></a></li>
+<li><a href="#generateFromImage" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>generate<wbr/>From<wbr/>Image</span></a></li></ul></div></details></div>
 <div class="site-menu">
 <nav class="tsd-navigation"><a href="../index.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1"></use></svg><span>@joliegg/ai</span></a>
 <ul class="tsd-small-nested-navigation" id="tsd-nav-container" data-base="..">

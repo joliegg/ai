@@ -9,6 +9,7 @@ declare class Dream {
     private _apiKey?;
     private _engine?;
     constructor(apiKey: string, engine?: string);
-    generate(prompt: string, n: number | undefined, size: Size, style?: Style, steps?: number): Promise<DreamResponse[]>;
+    generate(prompt: string, n: number | undefined, size: Size, style?: Style, steps?: number, scale?: number): Promise<DreamResponse[]>;
+    generateFromImage(image: string, prompt: string, imageStrength: number | undefined, n: number | undefined, size: Size, style?: Style, steps?: number, scale?: number): Promise<DreamResponse[]>;
 }
 export default Dream;

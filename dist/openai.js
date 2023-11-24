@@ -11,11 +11,11 @@ class ChatGPT {
     constructor(apiKey) {
         this._client = new openai_1.default({ apiKey });
     }
-    complete(messages, model = 'gpt-4') {
+    complete(messages, model = 'gpt-4', maxTokens = 300) {
         if (this._client instanceof openai_1.default === false) {
             throw new Error('OpenAI client not initialized');
         }
-        return this._client?.chat.completions.create({ model, messages });
+        return this._client?.chat.completions.create({ model, messages, max_tokens: maxTokens });
     }
     generate(prompt, n = 1, size = '1024x1024', model = 'dall-e-3') {
         if (this._client instanceof openai_1.default === false) {

@@ -13,12 +13,12 @@ class ChatGPT {
     this._client = new OpenAI({ apiKey });
   }
 
-  complete (messages: ChatCompletionMessageParam[], model: string = 'gpt-4' ): APIPromise<ChatCompletion> | undefined {
+  complete (messages: ChatCompletionMessageParam[], model: string = 'gpt-4', maxTokens: number = 300): APIPromise<ChatCompletion> | undefined {
     if (this._client instanceof OpenAI === false) {
       throw new Error('OpenAI client not initialized');
     }
 
-    return this._client?.chat.completions.create({ model, messages });
+    return this._client?.chat.completions.create({ model, messages, max_tokens: maxTokens });
   }
 
   generate (prompt: string, n: number = 1, size: '1024x1024' | '1024x1792' | '1792x1024' | '256x256' | '512x512' = '1024x1024', model: 'dall-e-3' | 'dall-e-2' = 'dall-e-3'): APIPromise<ImagesResponse> | undefined {

@@ -6,7 +6,7 @@ class Gemini {
     constructor(apiKey) {
         this._client = new generative_ai_1.GoogleGenerativeAI(apiKey);
     }
-    complete(prompt, startParams = null, model = 'gemini-pro-vision') {
+    complete(prompt, startParams = null, model = 'gemini-pro') {
         if (this._client instanceof generative_ai_1.GoogleGenerativeAI === false) {
             throw new Error('GoogleGenerativeAI client not initialized');
         }

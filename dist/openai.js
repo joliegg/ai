@@ -11,7 +11,7 @@ class ChatGPT {
     constructor(apiKey) {
         this._client = new openai_1.default({ apiKey });
     }
-    complete(messages, model = 'gpt-4', maxTokens = 300) {
+    complete(messages, model = 'gpt-4o', maxTokens = 300) {
         if (this._client instanceof openai_1.default === false) {
             throw new Error('OpenAI client not initialized');
         }

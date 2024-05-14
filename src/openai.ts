@@ -13,7 +13,7 @@ class ChatGPT {
     this._client = new OpenAI({ apiKey });
   }
 
-  complete (messages: ChatCompletionMessageParam[], model: string = 'gpt-4', maxTokens: number = 300): APIPromise<ChatCompletion> | undefined {
+  complete (messages: ChatCompletionMessageParam[], model: string = 'gpt-4o', maxTokens: number = 300): APIPromise<ChatCompletion> | undefined {
     if (this._client instanceof OpenAI === false) {
       throw new Error('OpenAI client not initialized');
     }

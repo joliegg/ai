@@ -11,7 +11,7 @@
     "moduleResolution": "node16",
     "outDir": "dist"
   },
-  "include": ["./src", "./.eslintrc.cjs"],
+  "include": ["./src", "eslint.config.mjs"],
   "typedocOptions": {
     "entryPoints": ["src/**/*"],
     "out": "docs"

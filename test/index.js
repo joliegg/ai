@@ -1,20 +1,22 @@
 require('dotenv').config();
 
-const { ChatGPT, Dream } = require('./../dist');
+const { ChatGPT, Dream, DeepSeek } = require('./../dist');
 
-const { OPEN_AI_API_KEY, STABILITY_AI_API_KEY } = process.env;
-
+const { OPEN_AI_API_KEY, STABILITY_AI_API_KEY, DEEPSEEK_API_KEY } = process.env;
 
 const chatGPT = new ChatGPT(OPEN_AI_API_KEY);
-
+const deepSeek = new DeepSeek(DEEPSEEK_API_KEY);
 const dream = new Dream(STABILITY_AI_API_KEY);
-
 
 (async () => {
 
-  const completion = await chatGPT.complete([{ role: 'user', content: 'Describe yourself in 5 words' }], 'gpt-4-vision-preview');
+  const completion = await chatGPT.complete([{ role: 'user', content: 'Describe yourself in 5 words' }], 'gpt-4o');
 
   console.log(completion);
+
+  const completion2 = await deepSeek.complete([{ role: 'user', content: 'Describe yourself in 5 words' }], 'deepseek-chat');
+
+  console.log(completion2);
 
   const image1 = await chatGPT.generate('Yellow cat looking at a cake', 1, '1024x1024');
 
@@ -24,7 +26,7 @@ const dream = new Dream(STABILITY_AI_API_KEY);
 
   console.log(image3);
 
-  const image2 = await dream.generate('Yellow cat looking at a cake', 2, '1024x1024');
+  const image2 = await dream.generate('Yellow cat looking at a cake');
 
   console.log(image2);
 

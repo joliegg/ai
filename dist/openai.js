@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const openai_1 = __importDefault(require("openai"));
 const ALLOWED_SIZES_V3 = ['1024x1024', '1024x1792', '1792x1024'];
 const ALLOWED_SIZES_V2 = ['256x256', '512x512', '1024x1024'];
+const ALLOWED_SIZES_GPT_IMAGE_1 = ['1024x1024', '1536x1024', '1024x1536', 'auto'];
 class ChatGPT {
     _client;
     constructor(apiKey) {
@@ -17,9 +18,19 @@ class ChatGPT {
         }
         return this._client?.chat.completions.create({ model, messages, max_tokens: maxTokens });
     }
-    generate(prompt, n = 1, size = '1024x1024', model = 'dall-e-3') {
+    generate(prompt, n = 1, size = 'auto', model = 'gpt-image-1') {
         if (this._client instanceof openai_1.default === false) {
             throw new Error('OpenAI client not initialized');
+        }
+        if (model === 'gpt-image-1') {
+            if (ALLOWED_SIZES_GPT_IMAGE_1.includes(size) === false) {
+                throw new Error(`Size must be one of ${ALLOWED_SIZES_GPT_IMAGE_1.join(', ')}`);
+            }
+        }
+        if (model === 'dall-e-2') {
+            if (ALLOWED_SIZES_V2.includes(size) === false) {
+                throw new Error(`Size must be one of ${ALLOWED_SIZES_V2.join(', ')}`);
+            }
         }
         if (model === 'dall-e-3') {
             if (n > 1) {
@@ -32,17 +43,16 @@ class ChatGPT {
         if (n > 10) {
             throw new Error('Cannot generate more than 10 images at once.');
         }
-        if (ALLOWED_SIZES_V2.includes(size) === false) {
-            throw new Error(`Size must be one of ${ALLOWED_SIZES_V2.join(', ')}`);
-        }
-        return this._client?.images.generate({
+        const query = {
             model,
             prompt,
             n,
             size,
-            quality: 'hd',
-            response_format: 'b64_json',
-        });
+        };
+        if (model !== 'gpt-image-1') {
+            query.response_format = 'b64_json';
+        }
+        return this._client?.images.generate(query);
     }
 }
 exports.default = ChatGPT;

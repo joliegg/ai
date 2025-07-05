@@ -9,7 +9,7 @@ class Gemini {
 
   }
 
-  complete (prompt: string | (string | Part)[], startParams: StartChatParams | null | undefined = null, model: string = 'gemini-1.5-pro-002'): Promise<GenerateContentResult> {
+  complete (prompt: string | (string | Part)[], startParams: StartChatParams | null | undefined = null, model: string = 'gemini-2.5-pro'): Promise<GenerateContentResult> {
     if (this._client instanceof GoogleGenerativeAI === false) {
       throw new Error('GoogleGenerativeAI client not initialized');
     }

@@ -1,10 +1,11 @@
 import OpenAI from 'openai';
 import { APIPromise } from 'openai/core.mjs';
 import { ChatCompletion, ChatCompletionMessageParam } from 'openai/resources/chat/index.mjs';
-import { ImagesResponse } from 'openai/resources/images.mjs';
+import { ImageGenerateParams, ImagesResponse } from 'openai/resources/images.mjs';
 
 const ALLOWED_SIZES_V3 = ['1024x1024', '1024x1792', '1792x1024'];
 const ALLOWED_SIZES_V2 = ['256x256', '512x512', '1024x1024'];
+const ALLOWED_SIZES_GPT_IMAGE_1 = ['1024x1024', '1536x1024', '1024x1536', 'auto'];
 
 class ChatGPT {
   private _client?: OpenAI;
@@ -21,9 +22,22 @@ class ChatGPT {
     return this._client?.chat.completions.create({ model, messages, max_tokens: maxTokens });
   }
 
-  generate (prompt: string, n: number = 1, size: '1024x1024' | '1024x1792' | '1792x1024' | '256x256' | '512x512' = '1024x1024', model: 'dall-e-3' | 'dall-e-2' = 'dall-e-3'): APIPromise<ImagesResponse> | undefined {
+  generate (prompt: string, n: number = 1, size: '1024x1024' | '1024x1792' | '1792x1024' | '256x256' | '512x512' | '1536x1024' | '1024x1536' | 'auto' = 'auto', model:  'gpt-image-1' | 'dall-e-3' | 'dall-e-2' = 'gpt-image-1'): APIPromise<ImagesResponse> | undefined {
     if (this._client instanceof OpenAI === false) {
       throw new Error('OpenAI client not initialized');
+
+    }
+
+    if (model === 'gpt-image-1') {
+      if (ALLOWED_SIZES_GPT_IMAGE_1.includes(size) === false) {
+        throw new Error(`Size must be one of ${ALLOWED_SIZES_GPT_IMAGE_1.join(', ')}`);
+      }
+    }
+
+    if (model === 'dall-e-2') {
+      if (ALLOWED_SIZES_V2.includes(size) === false) {
+        throw new Error(`Size must be one of ${ALLOWED_SIZES_V2.join(', ')}`);
+      }
     }
 
     if (model === 'dall-e-3') {
@@ -40,18 +54,18 @@ class ChatGPT {
       throw new Error('Cannot generate more than 10 images at once.');
     }
 
-    if (ALLOWED_SIZES_V2.includes(size) === false) {
-      throw new Error(`Size must be one of ${ALLOWED_SIZES_V2.join(', ')}`);
-    }
-
-    return this._client?.images.generate({
+    const query: ImageGenerateParams = {
       model,
       prompt,
       n,
       size,
-      quality: 'hd',
-      response_format: 'b64_json',
-    });
+    };
+
+    if (model !== 'gpt-image-1') {
+      query.response_format = 'b64_json';
+    }
+
+    return this._client?.images.generate(query);
   }
 
 }

@@ -3,6 +3,8 @@ import { APIPromise } from 'openai/core.mjs';
 import { ChatCompletion, ChatCompletionMessageParam } from 'openai/resources/chat/index.mjs';
 import { ImageGenerateParams, ImagesResponse } from 'openai/resources/images.mjs';
 
+import WebSocket from 'ws';
+
 const ALLOWED_SIZES_V3 = ['1024x1024', '1024x1792', '1792x1024'];
 const ALLOWED_SIZES_V2 = ['256x256', '512x512', '1024x1024'];
 const ALLOWED_SIZES_GPT_IMAGE_1 = ['1024x1024', '1536x1024', '1024x1536', 'auto'];
@@ -66,6 +68,19 @@ class ChatGPT {
     }
 
     return this._client?.images.generate(query);
+  }
+
+  converse (model: string = 'gpt-4o-realtime-preview') {
+    const url = `wss://api.openai.com/v1/realtime?model=${model}`;
+
+    const ws = new WebSocket(url, {
+      headers: {
+        "Authorization": "Bearer " + this._client?.apiKey,
+        "OpenAI-Beta": "realtime=v1",
+      },
+    });
+
+    return ws;
   }
 
 }

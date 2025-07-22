@@ -12,48 +12,98 @@ class Dream {
         this._apiKey = apiKey;
         this._engine = engine;
     }
-    async generate(prompt, n = 1, size = '1024x1024', style = null, steps = 50, scale = 7) {
+    /**
+     * Generate an image from a text prompt
+     *
+     * @param options - Generation options
+     *
+     * @returns Buffer containing the generated image
+     */
+    async generate(options) {
+        const { prompt, aspectRatio = '1:1', style = null, seed, negativePrompt, outputFormat = 'png', cfgScale, model } = options;
         const formData = new form_data_1.default();
-        formData.append('text_prompts[0][text]', prompt);
-        formData.append('text_prompts[0][weight]', '1');
-        formData.append('cfg_scale', scale.toString());
-        formData.append('height', size.split('x')[0]);
-        formData.append('width', size.split('x')[1]);
-        formData.append('samples', n.toString());
-        formData.append('steps', steps.toString());
+        formData.append('prompt', prompt);
+        if (aspectRatio !== '1:1') {
+            formData.append('aspect_ratio', aspectRatio);
+        }
         if (style) {
             formData.append('style_preset', style);
         }
-        const { data } = await axios_1.default.post(`https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image`, formData, {
+        if (seed !== undefined) {
+            formData.append('seed', seed.toString());
+        }
+        if (negativePrompt) {
+            formData.append('negative_prompt', negativePrompt);
+        }
+        if (outputFormat !== 'png') {
+            formData.append('output_format', outputFormat);
+        }
+        // SD3-specific parameters
+        if (this._engine === 'sd3') {
+            if (cfgScale !== undefined) {
+                formData.append('cfg_scale', cfgScale.toString());
+            }
+            if (model) {
+                formData.append('model', model);
+            }
+        }
+        const { data } = await axios_1.default.post(`https://api.stability.ai/v2beta/stable-image/generate/${this._engine}`, formData, {
             headers: {
                 Authorization: `Bearer ${this._apiKey}`,
-                Accept: 'application/json'
-            }
+                Accept: 'image/*',
+                ...formData.getHeaders()
+            },
+            responseType: 'arraybuffer'
         });
-        return data;
+        return Buffer.from(data);
     }
-    async generateFromImage(image, prompt, imageStrength = 0.35, n = 1, size = '1024x1024', style = null, steps = 50, scale = 7) {
+    /**
+     * Generate an image from a text prompt and starting image
+     *
+     * @param options - Image-to-image generation options
+     *
+     * @returns Buffer containing the generated image
+     */
+    async generateFromImage(options) {
+        const { image, prompt, strength = 0.35, aspectRatio = '1:1', style = null, seed, negativePrompt, outputFormat = 'png', cfgScale, model } = options;
         const formData = new form_data_1.default();
-        formData.append('text_prompts[0][text]', prompt);
-        formData.append('text_prompts[0][weight]', '1');
-        formData.append('cfg_scale', scale.toString());
-        formData.append('height', size.split('x')[0]);
-        formData.append('width', size.split('x')[1]);
-        formData.append('samples', n.toString());
-        formData.append('steps', steps.toString());
-        formData.append('init_image', image, { filename: 'init_image.png', contentType: 'image/png' });
-        formData.append('init_image_mode', 'IMAGE_TO_IMAGE');
-        formData.append('image_strength', imageStrength.toString());
+        formData.append('prompt', prompt);
+        formData.append('image', image, { filename: 'input_image.png', contentType: 'image/png' });
+        formData.append('strength', strength.toString());
+        if (aspectRatio !== '1:1') {
+            formData.append('aspect_ratio', aspectRatio);
+        }
         if (style) {
             formData.append('style_preset', style);
         }
-        const { data } = await axios_1.default.post(`https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/image-to-image`, formData, {
+        if (seed !== undefined) {
+            formData.append('seed', seed.toString());
+        }
+        if (negativePrompt) {
+            formData.append('negative_prompt', negativePrompt);
+        }
+        if (outputFormat !== 'png') {
+            formData.append('output_format', outputFormat);
+        }
+        // SD3-specific parameters
+        if (this._engine === 'sd3') {
+            formData.append('mode', 'image-to-image');
+            if (cfgScale !== undefined) {
+                formData.append('cfg_scale', cfgScale.toString());
+            }
+            if (model) {
+                formData.append('model', model);
+            }
+        }
+        const { data } = await axios_1.default.post(`https://api.stability.ai/v2beta/stable-image/generate/${this._engine}`, formData, {
             headers: {
                 Authorization: `Bearer ${this._apiKey}`,
-                Accept: 'application/json'
-            }
+                Accept: 'image/*',
+                ...formData.getHeaders()
+            },
+            responseType: 'arraybuffer'
         });
-        return data;
+        return Buffer.from(data);
     }
 }
 exports.default = Dream;

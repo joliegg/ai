@@ -1,21 +1,13 @@
 import { APIPromise } from 'openai/core.mjs';
 import { ChatCompletion, ChatCompletionMessageParam } from 'openai/resources/chat/index.mjs';
-import WebSocket from 'ws';
-export type Size = '1024x1024' | '1024x1792' | '1792x1024' | '256x256' | '512x512' | '1536x1024' | '1024x1536' | 'auto';
-export type Quality = 'auto' | 'low' | 'medium' | 'high' | 'standard' | 'hd';
 export type OutputFormat = 'png' | 'jpeg' | 'webp';
-export type Background = 'transparent' | 'opaque' | 'auto';
-export type ImageGenerationModel = 'gpt-image-1' | 'dall-e-3' | 'dall-e-2';
+export type ImageGenerationModel = 'grok-2-image';
 export interface GenerateOptions {
     prompt: string;
     n: number;
-    size: Size;
-    quality: Quality;
-    format: OutputFormat;
     model: ImageGenerationModel;
-    background: Background;
 }
-declare class ChatGPT {
+declare class Grok {
     private _client?;
     constructor(apiKey: string);
     complete(messages: ChatCompletionMessageParam[], model?: string, maxTokens?: number): APIPromise<ChatCompletion> | undefined;
@@ -28,6 +20,5 @@ declare class ChatGPT {
      *
      */
     generate(options: GenerateOptions): Promise<Buffer[]>;
-    converse(model?: string): WebSocket;
 }
-export default ChatGPT;
+export default Grok;

@@ -1,13 +1,35 @@
 import OpenAI from 'openai';
 import { APIPromise } from 'openai/core.mjs';
 import { ChatCompletion, ChatCompletionMessageParam } from 'openai/resources/chat/index.mjs';
-import { ImageGenerateParams, ImagesResponse } from 'openai/resources/images.mjs';
+import { ImageGenerateParams } from 'openai/resources/images.mjs';
 
 import WebSocket from 'ws';
 
 const ALLOWED_SIZES_V3 = ['1024x1024', '1024x1792', '1792x1024'];
 const ALLOWED_SIZES_V2 = ['256x256', '512x512', '1024x1024'];
 const ALLOWED_SIZES_GPT_IMAGE_1 = ['1024x1024', '1536x1024', '1024x1536', 'auto'];
+
+const ALLOWED_QUALITIES_V3 = ['standard', 'hd'];
+const ALLOWED_QUALITIES_V2 = ['standard'];
+const ALLOWED_QUALITIES_GPT_IMAGE_1 = [ 'auto', 'low', 'medium', 'high'];
+
+
+export type Size = '1024x1024' | '1024x1792' | '1792x1024' | '256x256' | '512x512' | '1536x1024' | '1024x1536' | 'auto';
+export type Quality = 'auto' | 'low' | 'medium' | 'high' | 'standard' | 'hd';
+export type OutputFormat = 'png' | 'jpeg' | 'webp';
+export type Background = 'transparent' | 'opaque' | 'auto';
+
+export type ImageGenerationModel = 'gpt-image-1' | 'dall-e-3' | 'dall-e-2';
+
+export interface GenerateOptions {
+  prompt: string;
+  n: number;
+  size: Size;
+  quality: Quality;
+  format: OutputFormat;
+  model: ImageGenerationModel;
+  background: Background;
+}
 
 class ChatGPT {
   private _client?: OpenAI;
@@ -24,21 +46,38 @@ class ChatGPT {
     return this._client?.chat.completions.create({ model, messages, max_tokens: maxTokens });
   }
 
-  generate (prompt: string, n: number = 1, size: '1024x1024' | '1024x1792' | '1792x1024' | '256x256' | '512x512' | '1536x1024' | '1024x1536' | 'auto' = 'auto', model:  'gpt-image-1' | 'dall-e-3' | 'dall-e-2' = 'gpt-image-1'): APIPromise<ImagesResponse> | undefined {
+  /**
+   * Generate images using OpenAI's image generation models
+   * 
+   * @param options - Image generation options
+   * 
+   * @returns Promise<Buffer[]> - Array of image buffer
+   *
+   */
+  async generate (options: GenerateOptions): Promise<Buffer[]> {
+    const { prompt, n, size, model, quality, format, background } = options;
+
     if (this._client instanceof OpenAI === false) {
       throw new Error('OpenAI client not initialized');
-
     }
 
     if (model === 'gpt-image-1') {
       if (ALLOWED_SIZES_GPT_IMAGE_1.includes(size) === false) {
         throw new Error(`Size must be one of ${ALLOWED_SIZES_GPT_IMAGE_1.join(', ')}`);
+      } 
+
+      if (quality && ALLOWED_QUALITIES_GPT_IMAGE_1.includes(quality) === false) {
+        throw new Error(`Quality must be one of ${ALLOWED_QUALITIES_GPT_IMAGE_1.join(', ')}`);
       }
     }
 
     if (model === 'dall-e-2') {
       if (ALLOWED_SIZES_V2.includes(size) === false) {
         throw new Error(`Size must be one of ${ALLOWED_SIZES_V2.join(', ')}`);
+      }
+
+      if (quality && ALLOWED_QUALITIES_V2.includes(quality) === false) {
+        throw new Error(`Quality must be one of ${ALLOWED_QUALITIES_V2.join(', ')}`);
       }
     }
 
@@ -49,6 +88,10 @@ class ChatGPT {
 
       if (ALLOWED_SIZES_V3.includes(size) === false) {
         throw new Error(`Size must be one of ${ALLOWED_SIZES_V3.join(', ')}`);
+      }
+
+      if (quality && ALLOWED_QUALITIES_V3.includes(quality) === false) {
+        throw new Error(`Quality must be one of ${ALLOWED_QUALITIES_V3.join(', ')}`);
       }
     }
 
@@ -61,13 +104,35 @@ class ChatGPT {
       prompt,
       n,
       size,
+      response_format: 'b64_json'
     };
 
-    if (model !== 'gpt-image-1') {
-      query.response_format = 'b64_json';
+    if (model === 'gpt-image-1') {
+      if (format) {
+        query.output_format = format;
+      }
+
+      if (background) {
+        query.background = background;
+      }
     }
 
-    return this._client?.images.generate(query);
+    if (model !== 'dall-e-2') {
+      query.quality = quality;
+    }
+
+    const response = await this._client.images.generate(query);
+    
+    if (!response.data) {
+      throw new Error('No image data received from OpenAI');
+    }
+
+    return response.data.map((image) => {
+      if (!image.b64_json) {
+        throw new Error('No base64 data received from OpenAI');
+      }
+      return Buffer.from(image.b64_json, 'base64');
+    });
   }
 
   converse (model: string = 'gpt-4o-realtime-preview') {

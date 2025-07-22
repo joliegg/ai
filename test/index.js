@@ -1,41 +1,135 @@
 require('dotenv').config();
 
-const { ChatGPT, Dream, DeepSeek } = require('./../dist');
+const fs = require('fs');
 
-const { OPEN_AI_API_KEY, STABILITY_AI_API_KEY, DEEPSEEK_API_KEY } = process.env;
+const { ChatGPT, Dream, DeepSeek, Grok } = require('./../dist');
+
+const { OPEN_AI_API_KEY, STABILITY_AI_API_KEY, DEEPSEEK_API_KEY, GROK_API_KEY } = process.env;
 
 const chatGPT = new ChatGPT(OPEN_AI_API_KEY);
 const deepSeek = new DeepSeek(DEEPSEEK_API_KEY);
 const dream = new Dream(STABILITY_AI_API_KEY);
+const grok = new Grok(GROK_API_KEY);
 
 (async () => {
 
-  // const completion = await chatGPT.complete([{ role: 'user', content: 'Describe yourself in 5 words' }], 'gpt-4o');
+  const gptCompletion = await chatGPT.complete([{ role: 'user', content: 'Describe yourself in 5 words' }], 'gpt-4o');
+  console.log(gptCompletion);
 
-  // console.log(completion);
+  const deepSeekCompletion = await deepSeek.complete([{ role: 'user', content: 'Describe yourself in 5 words' }], 'deepseek-chat');
+  console.log(deepSeekCompletion);
 
-  // const completion2 = await deepSeek.complete([{ role: 'user', content: 'Describe yourself in 5 words' }], 'deepseek-chat');
+  const grokCompletion = await grok.complete([{ role: 'user', content: 'Describe yourself in 5 words' }], 'grok-4');
+  console.log(grokCompletion);
 
-  // console.log(completion2);
+  const openAIImages = await chatGPT.generate({
+    prompt: 'A yellow cat looking at a birthday cake, photorealistic style',
+    n: 1,
+    size: '1024x1024',
+    model: 'dall-e-3',
+    quality: 'standard',
+    format: 'png',
+    background: 'auto'
+  });
 
-  // const image1 = await chatGPT.generate('Yellow cat looking at a cake', 1, '1024x1024');
+  fs.writeFileSync('./dall-e-3.png', openAIImages[0]);
 
-  // console.log(image1);
+  const dalle2Images = await chatGPT.generate({
+    prompt: 'Abstract geometric patterns in bright colors',
+    n: 2,
+    size: '512x512',
+    model: 'dall-e-2',
+    quality: 'standard',
+    format: 'png',
+    background: 'auto'
+  });
 
-  // const image3 = await chatGPT.generate('Yellow cat looking at a cake', 1, '1024x1024', 'dall-e-2');
+  fs.writeFileSync('./dall-e-2-1.png', dalle2Images[0]);
+  fs.writeFileSync('./dall-e-2-2.png', dalle2Images[1]);
 
-  // console.log(image3);
+ 
+  const grokImages = await grok.generate({
+    prompt: 'A futuristic robot exploring an alien planet with purple skies',
+    n: 1,
+    model: 'grok-2-image'
+  });
 
-  // const image2 = await dream.generate('Yellow cat looking at a cake');
+  fs.writeFileSync('./grok-2-image.png', grokImages[0]);
 
-  // console.log(image2);
+  // Test Grok with multiple images
+  const grokMultiImages = await grok.generate({
+    prompt: 'Minimalist tech startup office design, modern and clean',
+    n: 3,
+    model: 'grok-2-image'
+  });
+
+  fs.writeFileSync('./grok-2-image-1.png', grokMultiImages[0]);
+  fs.writeFileSync('./grok-2-image-2.png', grokMultiImages[1]);
+  fs.writeFileSync('./grok-2-image-3.png', grokMultiImages[2]);
+
+  const stabilityImage = await dream.generate({
+    prompt: 'A majestic dragon soaring through clouds at sunset',
+    aspectRatio: '16:9',
+    style: 'fantasy-art',
+    seed: 12345,
+    negativePrompt: 'blurry, low quality, cartoon',
+    outputFormat: 'png'
+  });
+
+  fs.writeFileSync('./stability-image.png', stabilityImage);
+
+  const portraitImage = await dream.generate({
+    prompt: 'Portrait of a wise elderly wizard with glowing eyes',
+    aspectRatio: '2:3',
+    style: 'cinematic',
+    seed: 98765,
+    outputFormat: 'webp'
+  });
+
+  fs.writeFileSync('./stability-image-portrait.png', portraitImage);
+
+  const landscapeImage = await dream.generate({
+    prompt: 'Vast alien landscape with two moons in the sky',
+    aspectRatio: '21:9',
+    style: 'photographic',
+    negativePrompt: 'earth, familiar',
+    outputFormat: 'jpeg'
+  });
+
+  fs.writeFileSync('./stability-image-landscape.png', landscapeImage);
+ 
+  const dreamSD3 = new Dream(STABILITY_AI_API_KEY, 'sd3');
+  const sd3Image = await dreamSD3.generate({
+    prompt: 'Futuristic cyberpunk cityscape with neon lights',
+    aspectRatio: '16:9',
+    style: 'cinematic',
+    cfgScale: 7,              
+    model: 'sd3.5-large-turbo',
+    seed: 54321,
+    negativePrompt: 'blurry, artifacts, low quality'
+  });
+
+  fs.writeFileSync('./stability-image-sd3.png', sd3Image);
+
+  const inputBuffer = fs.readFileSync('./stability-image-sd3.png');
+  const editedImage = await dream.generateFromImage({
+    image: inputBuffer,
+    prompt: 'Transform this into a magical fantasy scene',
+    strength: 0.7,
+    aspectRatio: '1:1',
+    style: 'fantasy-art',
+    seed: 11111,
+    negativePrompt: 'realistic, modern'
+  });
+
+  fs.writeFileSync('./stability-image-sd3-edited.png', editedImage);
 
   const conversation = await chatGPT.converse('gpt-4o-realtime-preview');
 
   conversation.on('message', (message) => {
     const event = JSON.parse(message.toString());
 
-    // console.log(event);
+    console.log(event);
 
     const { type } = event;
 
@@ -97,6 +191,7 @@ const dream = new Dream(STABILITY_AI_API_KEY);
   conversation.on('open', () => {
     console.log('Connection opened');
   });
+
 })();
 
 

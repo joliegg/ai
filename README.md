@@ -2,7 +2,7 @@
 
 # Chat AI
 
-This library provides a unified interface for multiple AI providers including OpenAI, StabilityAI, Google Gemini, and DeepSeek for both chat completions and image generation.
+This library provides a unified interface for multiple AI providers including OpenAI, StabilityAI, Google Gemini, DeepSeek, and Grok for both chat completions and image generation.
 
 ## Installation
 
@@ -13,18 +13,17 @@ yarn add @joliegg/ai
 ## Quick Start
 
 ```javascript
-import { ChatGPT, Dream, Gemini, DeepSeek } from '@joliegg/ai';
+import { ChatGPT, Dream, Gemini, DeepSeek, Grok } from '@joliegg/ai';
 
 // Initialize with your API keys
 const chatGPT = new ChatGPT(process.env.OPENAI_API_KEY);
 const dream = new Dream(process.env.STABILITY_API_KEY);
 const gemini = new Gemini(process.env.GOOGLE_API_KEY);
 const deepSeek = new DeepSeek(process.env.DEEPSEEK_API_KEY);
+const grok = new Grok(process.env.GROK_API_KEY);
 ```
 
-## Usage
-
-### Chat Completions
+## Chat Completions
 
 #### OpenAI ChatGPT
 
@@ -114,9 +113,39 @@ const conversation = await deepSeek.complete([
   { role: 'assistant', content: 'Object-oriented programming is a paradigm...' },
   { role: 'user', content: 'Can you give me a practical example?' }
 ], 'deepseek-chat', 600);
+
+console.log('DeepSeek Chat completion:', conversation.choices[0].message.content);
 ```
 
-### Image Generation
+#### Grok
+
+```javascript
+import { Grok } from '@joliegg/ai';
+
+const grok = new Grok('your-grok-api-key');
+
+// Simple completion with default model
+const completion = await grok.complete([
+  { role: 'user', content: 'Write a creative short story about AI' }
+]);
+
+// Completion with custom model and token limit
+const completion2 = await grok.complete([
+  { role: 'user', content: 'Explain quantum entanglement in simple terms' }
+], 'grok-4', 400);
+
+// Chat conversation
+const conversation = await grok.complete([
+  { role: 'system', content: 'You are a witty and knowledgeable assistant.' },
+  { role: 'user', content: 'What makes you different from other AI models?' },
+  { role: 'assistant', content: 'I like to think I bring a bit more personality...' },
+  { role: 'user', content: 'Tell me about your reasoning capabilities' }
+], 'grok-4', 600);
+
+console.log('Grok response:', completion.choices[0].message.content);
+```
+
+## Image Generation
 
 #### OpenAI DALL-E
 
@@ -126,44 +155,66 @@ import { ChatGPT } from '@joliegg/ai';
 const chatGPT = new ChatGPT('your-openai-api-key');
 
 // Generate with DALL-E 3 (highest quality)
-const image = await chatGPT.generate(
-  'A yellow cat looking at a birthday cake',
-  1, // number of images (DALL-E 3 only supports 1)
-  '1024x1024', // size
-  'dall-e-3' // model
-);
+const images = await chatGPT.generate({
+  prompt: 'A yellow cat looking at a birthday cake',
+  n: 1, // number of images (DALL-E 3 only supports 1)
+  size: '1024x1024',
+  model: 'dall-e-3',
+  quality: 'standard',
+  format: 'png',
+  background: 'auto'
+});
+
+fs.writeFileSync('cat-cake.png', images[0]);
 
 // Generate with DALL-E 2 (multiple images possible)
-const images = await chatGPT.generate(
-  'A futuristic city skyline at sunset',
-  4, // generate 4 variations
-  '512x512', // smaller size for faster generation
-  'dall-e-2'
-);
+const images2 = await chatGPT.generate({
+  prompt: 'A futuristic city skyline at sunset',
+  n: 4, // generate 4 variations
+  size: '512x512',
+  model: 'dall-e-2',
+  quality: 'standard',
+  format: 'png',
+  background: 'auto'
+});
+
+// Save all generated images
+images2.forEach((buffer, index) => {
+  fs.writeFileSync(`city-${index}.png`, buffer);
+});
 
 // Generate with GPT Image 1 (auto size)
-const image3 = await chatGPT.generate(
-  'A watercolor painting of mountains in autumn',
-  1,
-  'auto', // automatic size selection
-  'gpt-image-1'
-);
+const images3 = await chatGPT.generate({
+  prompt: 'A watercolor painting of mountains in autumn',
+  n: 1,
+  size: 'auto', // automatic size selection
+  model: 'gpt-image-1',
+  quality: 'standard',
+  format: 'png',
+  background: 'auto'
+});
 
 // Generate portrait with DALL-E 3
-const portrait = await chatGPT.generate(
-  'A professional headshot of a software engineer',
-  1,
-  '1024x1792', // portrait aspect ratio
-  'dall-e-3'
-);
+const portrait = await chatGPT.generate({
+  prompt: 'A professional headshot of a software engineer',
+  n: 1,
+  size: '1024x1792', // portrait aspect ratio
+  model: 'dall-e-3',
+  quality: 'high',
+  format: 'png',
+  background: 'auto'
+});
 
 // Generate landscape with DALL-E 3
-const landscape = await chatGPT.generate(
-  'A panoramic view of a mountain range',
-  1,
-  '1792x1024', // landscape aspect ratio
-  'dall-e-3'
-);
+const landscape = await chatGPT.generate({
+  prompt: 'A panoramic view of a mountain range',
+  n: 1,
+  size: '1792x1024', // landscape aspect ratio
+  model: 'dall-e-3',
+  quality: 'high',
+  format: 'webp',
+  background: 'auto'
+});
 ```
 
 #### Stability AI Dream
@@ -177,117 +228,240 @@ const dreamCore = new Dream('your-stability-api-key', 'core'); // balanced
 const dreamSD3 = new Dream('your-stability-api-key', 'sd3'); // Stable Diffusion 3
 
 // Generate image from text with fantasy style
-const result = await dreamUltra.generate(
-  'A magical forest with glowing mushrooms and fairy lights',
-  1, // number of images
-  '1024x1024', // size
-  'fantasy-art', // style preset
-  50, // steps
-  7 // cfg scale
-);
+const image = await dreamUltra.generate({
+  prompt: 'A magical forest with glowing mushrooms and fairy lights',
+  aspectRatio: '1:1',
+  style: 'fantasy-art',
+  seed: 12345,
+  outputFormat: 'png'
+});
 
-// Generate with different style presets
-const animeResult = await dreamUltra.generate(
-  'A cyberpunk city street at night',
-  1,
-  '1344x768', // ultra-wide landscape
-  'anime', // anime style
-  75, // more steps for better quality
-  8 // higher cfg scale for stronger adherence
-);
+fs.writeFileSync('magical-forest.png', image);
 
-const photographicResult = await dreamUltra.generate(
-  'A professional product photo of a modern smartphone',
-  1,
-  '1024x1024',
-  'photographic', // realistic style
-  30, // fewer steps for faster generation
-  6 // lower cfg scale for more creative freedom
-);
+// Generate with different style presets and aspect ratios
+const animeImage = await dreamUltra.generate({
+  prompt: 'A cyberpunk city street at night',
+  aspectRatio: '21:9', // ultra-wide landscape
+  style: 'anime',
+  negativePrompt: 'blurry, low quality',
+  outputFormat: 'webp'
+});
 
-// Generate with different aspect ratios
-const portraitResult = await dreamUltra.generate(
-  'A portrait of a wise old wizard',
-  1,
-  '896x1152', // portrait aspect ratio
-  'cinematic', // cinematic style
-  50,
-  7
-);
+const photographicImage = await dreamUltra.generate({
+  prompt: 'A professional product photo of a modern smartphone',
+  aspectRatio: '1:1',
+  style: 'photographic',
+  seed: 98765,
+  outputFormat: 'jpeg'
+});
 
-const panoramicResult = await dreamUltra.generate(
-  'A panoramic view of a mountain landscape',
-  1,
-  '1536x640', // panoramic landscape
-  'enhance', // enhanced photography style
-  60,
-  7
-);
+// Generate portrait and panoramic images
+const portraitImage = await dreamUltra.generate({
+  prompt: 'A portrait of a wise old wizard',
+  aspectRatio: '2:3', // portrait aspect ratio
+  style: 'cinematic',
+  negativePrompt: 'cartoon, anime'
+});
+
+const panoramicImage = await dreamUltra.generate({
+  prompt: 'A panoramic view of a mountain landscape',
+  aspectRatio: '21:9', // panoramic landscape
+  style: 'enhance',
+  outputFormat: 'webp'
+});
+
+// Generate using SD3 engine with advanced options
+const sd3Image = await dreamSD3.generate({
+  prompt: 'Futuristic cityscape at sunset',
+  aspectRatio: '16:9',
+  style: 'cinematic',
+  cfgScale: 7, // SD3 only
+  model: 'sd3.5-large-turbo', // SD3 only - choose specific variant
+  seed: 54321,
+  negativePrompt: 'dark, gloomy'
+});
 
 // Generate image from existing image (image-to-image)
-const imageBuffer = fs.readFileSync('input-image.png');
-const result2 = await dreamUltra.generateFromImage(
-  imageBuffer,
-  'Make this image more vibrant and colorful with a sunset glow',
-  0.35, // image strength (how much to preserve original)
-  1,
-  '1024x1024',
-  'enhance' // enhance style for better results
-);
+const inputImageBuffer = fs.readFileSync('input-image.png');
+const editedImage = await dreamUltra.generateFromImage({
+  image: inputImageBuffer,
+  prompt: 'Make this image more vibrant and colorful with a sunset glow',
+  strength: 0.35, // how much to preserve original
+  aspectRatio: '1:1',
+  style: 'enhance',
+  outputFormat: 'png'
+});
+
+// Save the edited image
+fs.writeFileSync('enhanced-image.png', editedImage);
 
 // Image-to-image with different strength values
-const strongEdit = await dreamUltra.generateFromImage(
-  imageBuffer,
-  'Transform this into a watercolor painting',
-  0.8, // high strength = more creative changes
-  1,
-  '1024x1024',
-  'digital-art'
-);
+const strongEdit = await dreamUltra.generateFromImage({
+  image: inputImageBuffer,
+  prompt: 'Transform this into a watercolor painting',
+  strength: 0.8, // high strength = more creative changes
+  aspectRatio: '1:1',
+  style: 'digital-art',
+  seed: 11111
+});
 
-const subtleEdit = await dreamUltra.generateFromImage(
-  imageBuffer,
-  'Slightly brighten the colors',
-  0.1, // low strength = subtle changes
-  1,
-  '1024x1024',
-  'enhance'
-);
+const subtleEdit = await dreamUltra.generateFromImage({
+  image: inputImageBuffer,
+  prompt: 'Slightly brighten the colors',
+  strength: 0.1, // low strength = subtle changes
+  aspectRatio: '1:1',
+  style: 'enhance',
+  negativePrompt: 'oversaturated'
+});
+
+// SD3 image-to-image with advanced options
+const sd3Edit = await dreamSD3.generateFromImage({
+  image: inputImageBuffer,
+  prompt: 'Convert to a futuristic sci-fi scene',
+  strength: 0.6,
+  aspectRatio: '16:9',
+  style: 'cinematic',
+  cfgScale: 8, // SD3 only
+  model: 'sd3.5-large', // SD3 only
+  negativePrompt: 'blurry, artifacts'
+});
+```
+
+#### Grok Image Generation
+
+```javascript
+import { Grok } from '@joliegg/ai';
+
+const grok = new Grok('your-grok-api-key');
+
+// Generate single image with Grok
+const images = await grok.generate({
+  prompt: 'A futuristic robot exploring an alien planet with purple skies',
+  n: 1,
+  model: 'grok-2-image'
+});
+
+// images is now a Buffer[] - save the first image
+fs.writeFileSync('robot-planet.png', images[0]);
+
+// Generate multiple variations
+const multipleImages = await grok.generate({
+  prompt: 'Minimalist tech startup office design, modern and clean',
+  n: 4, // Generate 4 variations
+  model: 'grok-2-image'
+});
+
+// Save all generated images
+multipleImages.forEach((buffer, index) => {
+  fs.writeFileSync(`office-design-${index}.png`, buffer);
+});
+
+// Creative and artistic prompts
+const artImage = await grok.generate({
+  prompt: 'Abstract digital art representing the concept of artificial intelligence, vibrant colors and geometric patterns',
+  n: 1,
+  model: 'grok-2-image'
+});
+
+// Photorealistic scenes
+const photoImage = await grok.generate({
+  prompt: 'Photorealistic image of a cozy coffee shop on a rainy day, warm lighting, people reading books',
+  n: 2,
+  model: 'grok-2-image'
+});
+
+// Fantasy and sci-fi themes
+const fantasyImages = await grok.generate({
+  prompt: 'Epic fantasy landscape with floating islands, waterfalls, and magical creatures in the distance',
+  n: 1,
+  model: 'grok-2-image'
+});
+
+console.log('Generated', fantasyImages.length, 'fantasy images');
 ```
 
 ## Configuration Options
 
-### Image Sizes
+### OpenAI Image Generation Options
 
-#### OpenAI DALL-E 2
-- `256x256` - Small square
-- `512x512` - Medium square
-- `1024x1024` - Large square
+```typescript
+export interface GenerateOptions {
+  prompt: string;
+  n: number;          // Number of images to generate
+  size: Size;         // Image dimensions
+  model: ImageGenerationModel;
+  quality: Quality;   // Image quality
+  format: OutputFormat; // Output format
+  background: Background; // Background handling
+}
+```
 
-#### OpenAI DALL-E 3
-- `1024x1024` - Square
-- `1024x1792` - Portrait
-- `1792x1024` - Landscape
+#### Available Values:
 
-#### OpenAI GPT Image 1
-- `1024x1024` - Square
-- `1536x1024` - Landscape
-- `1024x1536` - Portrait
-- `auto` - Automatic size selection
+**Sizes:**
+- DALL-E 2: `'256x256' | '512x512' | '1024x1024'`
+- DALL-E 3: `'1024x1024' | '1024x1792' | '1792x1024'`
+- GPT Image 1: `'1024x1024' | '1536x1024' | '1024x1536' | 'auto'`
 
-#### Stability AI Dream
-- `1024x1024` - Square
-- `1152x896` - Landscape
-- `896x1152` - Portrait
-- `1216x832` - Wide landscape
-- `832x1216` - Tall portrait
-- `1344x768` - Ultra-wide landscape
-- `768x1344` - Ultra-tall portrait
-- `1536x640` - Panoramic landscape
-- `640x1536` - Panoramic portrait
+**Models:** `'gpt-image-1' | 'dall-e-3' | 'dall-e-2'`
 
-### Stability AI Style Presets
+**Quality:** `'standard' | 'hd'`
 
+**Format:** `'png' | 'jpeg' | 'webp'`
+
+**Background:** `'transparent' | 'opaque' | 'auto'`
+
+### Grok Image Generation Options
+
+```typescript
+export interface GenerateOptions {
+  prompt: string;
+  n: number;          // Number of images to generate (max 10)
+  model: ImageGenerationModel;
+}
+```
+
+#### Available Values:
+
+**Models:** `'grok-2-image'`
+
+**Count:** 1 to 10 images per request
+
+### Stability AI Generation Options
+
+```typescript
+export interface GenerateOptions {
+  prompt: string;
+  aspectRatio?: AspectRatio;
+  style?: Style;
+  seed?: number;
+  negativePrompt?: string;
+  outputFormat?: OutputFormat;
+  // SD3 only parameters:
+  cfgScale?: number;
+  model?: SD3_Engine;
+}
+
+export interface ImageToImageOptions extends GenerateOptions {
+  image: Buffer;
+  strength?: number; // 0.0-1.0, how much to change the input
+}
+```
+
+#### Available Values:
+
+**Aspect Ratios:**
+- `16:9` - Widescreen landscape
+- `1:1` - Square
+- `21:9` - Ultra-wide landscape
+- `2:3` - Portrait
+- `3:2` - Landscape
+- `4:5` - Portrait
+- `5:4` - Landscape
+- `9:16` - Mobile portrait
+- `9:21` - Ultra-tall portrait
+
+**Styles:**
 - `3d-model` - 3D rendered objects
 - `analog-film` - Film photography style
 - `anime` - Japanese animation style
@@ -306,23 +480,15 @@ const subtleEdit = await dreamUltra.generateFromImage(
 - `pixel-art` - Retro pixel graphics
 - `tile-texture` - Seamless texture pattern
 
-### Stability AI Aspect Ratios
-
-- `16:9` - Widescreen landscape
-- `1:1` - Square
-- `21:9` - Ultra-wide landscape
-- `2:3` - Portrait
-- `3:2` - Landscape
-- `4:5` - Portrait
-- `5:4` - Landscape
-- `9:16` - Mobile portrait
-- `9:21` - Ultra-tall portrait
-
-### Stability AI Engines
-
+**Engines:**
 - `ultra` - Highest quality (default)
 - `core` - Balanced quality and speed
 - `sd3` - Stable Diffusion 3
+
+**SD3.5 Model Variants** (when using `sd3` engine):
+- `sd3.5-large` - 8B parameters, highest quality (6.5 credits)
+- `sd3.5-large-turbo` - Fast version of large (4 credits)  
+- `sd3.5-medium` - 2.5B parameters, balanced (3.5 credits)
 
 ### Model Names
 
@@ -346,16 +512,34 @@ const subtleEdit = await dreamUltra.generateFromImage(
 - `deepseek-chat` - DeepSeek Chat (default)
 - `deepseek-coder` - DeepSeek Coder
 
-### Generation Parameters
+#### Grok Models
+- `grok-4` - Grok 4 Chat (default)
+- `grok-2-image` - Grok 2 Image Generation
 
-#### Stability AI Parameters
-- **steps**: Number of generation steps (default: 50, range: 10-150)
-- **scale**: CFG scale for prompt adherence (default: 7, range: 1-20)
-- **imageStrength**: For image-to-image, how much to preserve original (default: 0.35, range: 0.0-1.0)
 
-#### OpenAI Parameters
+### Engine-Specific Parameters
+
+**SD3 Engine Only:**
+- `cfgScale`: CFG scale for prompt adherence (range: 1-10)
+- `model`: Choose SD3.5 variant (`'sd3.5-large' | 'sd3.5-large-turbo' | 'sd3.5-medium'`)
+
+**All Engines:**
+- `prompt`, `aspectRatio`, `style`, `seed`, `negativePrompt`, `outputFormat`
+
+### Parameter Ranges
+
+#### OpenAI
+- **n**: 1 to 10 images (DALL-E 3 limited to 1)
 - **maxTokens**: Maximum tokens for chat completions (default: 300)
-- **n**: Number of images to generate (default: 1, max: 10)
+
+#### Grok
+- **n**: 1 to 10 images for image generation
+- **maxTokens**: Maximum tokens for chat completions (default: 300)
+
+#### Stability AI
+- **seed**: 0 to 4294967294 (omit for random)
+- **strength**: 0.0 to 1.0 (image-to-image only)
+- **cfgScale**: 1 to 10 (SD3 only)
 
 
 ## License

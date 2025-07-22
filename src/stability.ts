@@ -3,21 +3,35 @@ import FormData from 'form-data';
 
 export type Style = '3d-model' | 'analog-film' | 'anime' | 'cinematic' | 'comic-book' | 'digital-art' | 'enhance' | 'fantasy-art' | 'isometric' | 'line-art' | 'low-poly' | 'modeling-compound' | 'neon-punk' | 'origami' | 'photographic' | 'pixel-art' | 'tile-texture';
 
-export type Size = '1024x1024' | '1152x896' | '896x1152' | '1216x832' | '832x1216' | '1344x768' | '768x1344' | '1536x640' | '640x1536';
-
 export type AspectRatio = '16:9' | '1:1' | '21:9' | '2:3' | '3:2' | '4:5' | '5:4' | '9:16' | '9:21';
+
+export type OutputFormat = 'png' | 'jpeg' | 'webp';
 
 export type Engine = 'ultra' | 'core' | 'sd3';
 
-export interface DreamResponse {
-  base64: string;
-  finishReason: string;
-  seed: number;
+export type SD3_Engine = 'sd3.5-large' | 'sd3.5-large-turbo' | 'sd3.5-medium';
+
+export interface GenerateOptions {
+  prompt: string;
+  aspectRatio?: AspectRatio;
+  style?: Style;
+  seed?: number;
+  negativePrompt?: string;
+  outputFormat?: OutputFormat;
+
+  // These are only supported by the SD3 engine
+  cfgScale?: number;
+  model?: SD3_Engine; 
 }
 
-export interface DreamArtifact {
-  base64: string;
-  finishReason: string;
+export interface ImageToImageOptions extends GenerateOptions {
+  image: Buffer;
+  strength?: number;
+}
+
+export interface DreamResponse {
+  image?: string;
+  finish_reason: string;
   seed: number;
 }
 
@@ -30,58 +44,144 @@ class Dream {
     this._engine = engine;
   }
 
-  async generate (prompt: string, n: number = 1, size: Size = '1024x1024', style: Style | null = null, steps: number = 50, scale: number = 7): Promise<{ artifacts: DreamArtifact[] }> {
+  /**
+   * Generate an image from a text prompt
+   * 
+   * @param options - Generation options
+   * 
+   * @returns Buffer containing the generated image
+   */
+  async generate (options: GenerateOptions): Promise<Buffer> {
+    const {
+      prompt,
+      aspectRatio = '1:1',
+      style = null,
+      seed,
+      negativePrompt,
+      outputFormat = 'png',
+      cfgScale,
+      model
+    } = options;
+
     const formData = new FormData();
 
-    formData.append('text_prompts[0][text]', prompt);
-    formData.append('text_prompts[0][weight]', '1');
-    formData.append('cfg_scale', scale.toString());
-    formData.append('height', size.split('x')[0]);
-    formData.append('width', size.split('x')[1]);
-    formData.append('samples', n.toString());
-    formData.append('steps', steps.toString());
-
+    formData.append('prompt', prompt);
+    
+    if (aspectRatio !== '1:1') {
+      formData.append('aspect_ratio', aspectRatio);
+    }
+    
     if (style) {
       formData.append('style_preset', style);
     }
+    
+    if (seed !== undefined) {
+      formData.append('seed', seed.toString());
+    }
+    
+    if (negativePrompt) {
+      formData.append('negative_prompt', negativePrompt);
+    }
+    
+    if (outputFormat !== 'png') {
+      formData.append('output_format', outputFormat);
+    }
+    
+    // SD3-specific parameters
+    if (this._engine === 'sd3') {
+      if (cfgScale !== undefined) {
+        formData.append('cfg_scale', cfgScale.toString());
+      }
+      
+      if (model) {
+        formData.append('model', model);
+      }
+    }
 
-    const { data } = await axios.post(`https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image`, formData, {
+    const { data } = await axios.post(`https://api.stability.ai/v2beta/stable-image/generate/${this._engine}`, formData, {
       headers: {
         Authorization: `Bearer ${this._apiKey}`,
-        Accept: 'application/json'
-      }
+        Accept: 'image/*',
+        ...formData.getHeaders()
+      },
+      responseType: 'arraybuffer'
     });
 
-    return data;
+    return Buffer.from(data);
   }
 
-  async generateFromImage (image: Buffer, prompt: string, imageStrength: number = 0.35, n: number = 1, size: Size = '1024x1024', style: Style | null = null, steps: number = 50, scale: number = 7): Promise<{ artifacts: DreamArtifact[] }> {
+  /**
+   * Generate an image from a text prompt and starting image
+   * 
+   * @param options - Image-to-image generation options
+   * 
+   * @returns Buffer containing the generated image
+   */
+  async generateFromImage (options: ImageToImageOptions): Promise<Buffer> {
+    const {
+      image,
+      prompt,
+      strength = 0.35,
+      aspectRatio = '1:1',
+      style = null,
+      seed,
+      negativePrompt,
+      outputFormat = 'png',
+      cfgScale,
+      model
+    } = options;
+
     const formData = new FormData();
 
-    formData.append('text_prompts[0][text]', prompt);
-    formData.append('text_prompts[0][weight]', '1');
-    formData.append('cfg_scale', scale.toString());
-    formData.append('height', size.split('x')[0]);
-    formData.append('width', size.split('x')[1]);
-    formData.append('samples', n.toString());
-    formData.append('steps', steps.toString());
-    formData.append('init_image', image, { filename: 'init_image.png', contentType: 'image/png' });
-    formData.append('init_image_mode', 'IMAGE_TO_IMAGE');
-    formData.append('image_strength', imageStrength.toString());
-
+    formData.append('prompt', prompt);
+    formData.append('image', image, { filename: 'input_image.png', contentType: 'image/png' });
+    formData.append('strength', strength.toString());
+    
+    if (aspectRatio !== '1:1') {
+      formData.append('aspect_ratio', aspectRatio);
+    }
+    
     if (style) {
       formData.append('style_preset', style);
     }
+    
+    if (seed !== undefined) {
+      formData.append('seed', seed.toString());
+    }
+    
+    if (negativePrompt) {
+      formData.append('negative_prompt', negativePrompt);
+    }
+    
+    if (outputFormat !== 'png') {
+      formData.append('output_format', outputFormat);
+    }
 
-    const { data } = await axios.post(`https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/image-to-image`, formData, {
+    // SD3-specific parameters
+    if (this._engine === 'sd3') {
+      formData.append('mode', 'image-to-image');
+      
+      if (cfgScale !== undefined) {
+        formData.append('cfg_scale', cfgScale.toString());
+      }
+      
+      if (model) {
+        formData.append('model', model);
+      }
+    }
+
+    const { data } = await axios.post(`https://api.stability.ai/v2beta/stable-image/generate/${this._engine}`, formData, {
       headers: {
         Authorization: `Bearer ${this._apiKey}`,
-        Accept: 'application/json'
-      }
-    });
+        Accept: 'image/*',
+        ...formData.getHeaders()
+      },
+      responseType: 'arraybuffer'
+    }); 
 
-    return data;
+    return Buffer.from(data);
   }
+
 }
 
 export default Dream;

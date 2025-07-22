@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Grok = exports.Gemini = exports.DeepSeek = exports.Dream = exports.ChatGPT = void 0;
+exports.Claude = exports.Grok = exports.Gemini = exports.DeepSeek = exports.Dream = exports.ChatGPT = void 0;
 const openai_1 = __importDefault(require("./openai"));
 exports.ChatGPT = openai_1.default;
 const stability_1 = __importDefault(require("./stability"));
@@ -14,3 +14,5 @@ const gemini_1 = __importDefault(require("./gemini"));
 exports.Gemini = gemini_1.default;
 const grok_1 = __importDefault(require("./grok"));
 exports.Grok = grok_1.default;
+const claude_1 = __importDefault(require("./claude"));
+exports.Claude = claude_1.default;

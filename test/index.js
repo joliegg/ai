@@ -2,14 +2,15 @@ require('dotenv').config();
 
 const fs = require('fs');
 
-const { ChatGPT, Dream, DeepSeek, Grok } = require('./../dist');
+const { ChatGPT, Dream, DeepSeek, Grok, Claude } = require('./../dist');
 
-const { OPEN_AI_API_KEY, STABILITY_AI_API_KEY, DEEPSEEK_API_KEY, GROK_API_KEY } = process.env;
+const { OPEN_AI_API_KEY, STABILITY_AI_API_KEY, DEEPSEEK_API_KEY, GROK_API_KEY, CLAUDE_API_KEY } = process.env;
 
 const chatGPT = new ChatGPT(OPEN_AI_API_KEY);
 const deepSeek = new DeepSeek(DEEPSEEK_API_KEY);
 const dream = new Dream(STABILITY_AI_API_KEY);
 const grok = new Grok(GROK_API_KEY);
+const claude = new Claude(CLAUDE_API_KEY);
 
 (async () => {
 
@@ -21,6 +22,9 @@ const grok = new Grok(GROK_API_KEY);
 
   const grokCompletion = await grok.complete([{ role: 'user', content: 'Describe yourself in 5 words' }], 'grok-4');
   console.log(grokCompletion);
+
+  const claudeCompletion = await claude.complete([{ role: 'user', content: 'Describe yourself in 5 words' }], 'claude-3-5-sonnet-20240620');
+  console.log(claudeCompletion);
 
   const openAIImages = await chatGPT.generate({
     prompt: 'A yellow cat looking at a birthday cake, photorealistic style',

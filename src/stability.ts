@@ -21,7 +21,7 @@ export interface GenerateOptions {
 
   // These are only supported by the SD3 engine
   cfgScale?: number;
-  model?: SD3_Engine; 
+  model?: SD3_Engine;
 }
 
 export interface ImageToImageOptions extends GenerateOptions {
@@ -46,9 +46,9 @@ class Dream {
 
   /**
    * Generate an image from a text prompt
-   * 
+   *
    * @param options - Generation options
-   * 
+   *
    * @returns Buffer containing the generated image
    */
   async generate (options: GenerateOptions): Promise<Buffer> {
@@ -66,33 +66,33 @@ class Dream {
     const formData = new FormData();
 
     formData.append('prompt', prompt);
-    
+
     if (aspectRatio !== '1:1') {
       formData.append('aspect_ratio', aspectRatio);
     }
-    
+
     if (style) {
       formData.append('style_preset', style);
     }
-    
-    if (seed !== undefined) {
+
+    if (seed !== undefined && seed !== null) {
       formData.append('seed', seed.toString());
     }
-    
+
     if (negativePrompt) {
       formData.append('negative_prompt', negativePrompt);
     }
-    
+
     if (outputFormat !== 'png') {
       formData.append('output_format', outputFormat);
     }
-    
+
     // SD3-specific parameters
     if (this._engine === 'sd3') {
-      if (cfgScale !== undefined) {
+      if (cfgScale !== undefined && cfgScale !== null) {
         formData.append('cfg_scale', cfgScale.toString());
       }
-      
+
       if (model) {
         formData.append('model', model);
       }
@@ -112,9 +112,9 @@ class Dream {
 
   /**
    * Generate an image from a text prompt and starting image
-   * 
+   *
    * @param options - Image-to-image generation options
-   * 
+   *
    * @returns Buffer containing the generated image
    */
   async generateFromImage (options: ImageToImageOptions): Promise<Buffer> {
@@ -135,24 +135,27 @@ class Dream {
 
     formData.append('prompt', prompt);
     formData.append('image', image, { filename: 'input_image.png', contentType: 'image/png' });
-    formData.append('strength', strength.toString());
-    
+
+    if (typeof strength === 'number') {
+      formData.append('strength', strength.toString());
+    }
+
     if (aspectRatio !== '1:1') {
       formData.append('aspect_ratio', aspectRatio);
     }
-    
+
     if (style) {
       formData.append('style_preset', style);
     }
-    
-    if (seed !== undefined) {
+
+    if (seed !== undefined && seed !== null) {
       formData.append('seed', seed.toString());
     }
-    
+
     if (negativePrompt) {
       formData.append('negative_prompt', negativePrompt);
     }
-    
+
     if (outputFormat !== 'png') {
       formData.append('output_format', outputFormat);
     }
@@ -160,11 +163,11 @@ class Dream {
     // SD3-specific parameters
     if (this._engine === 'sd3') {
       formData.append('mode', 'image-to-image');
-      
-      if (cfgScale !== undefined) {
+
+      if (cfgScale !== undefined && cfgScale !== null) {
         formData.append('cfg_scale', cfgScale.toString());
       }
-      
+
       if (model) {
         formData.append('model', model);
       }
@@ -177,7 +180,7 @@ class Dream {
         ...formData.getHeaders()
       },
       responseType: 'arraybuffer'
-    }); 
+    });
 
     return Buffer.from(data);
   }

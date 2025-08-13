@@ -70,7 +70,6 @@ class ChatGPT {
             prompt,
             n,
             size,
-            response_format: 'b64_json'
         };
         if (model === 'gpt-image-1') {
             if (format) {
@@ -79,6 +78,9 @@ class ChatGPT {
             if (background) {
                 query.background = background;
             }
+        }
+        else {
+            query.response_format = 'b64_json';
         }
         if (model !== 'dall-e-2') {
             query.quality = quality;

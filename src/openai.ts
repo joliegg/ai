@@ -48,9 +48,9 @@ class ChatGPT {
 
   /**
    * Generate images using OpenAI's image generation models
-   * 
+   *
    * @param options - Image generation options
-   * 
+   *
    * @returns Promise<Buffer[]> - Array of image buffer
    *
    */
@@ -64,7 +64,7 @@ class ChatGPT {
     if (model === 'gpt-image-1') {
       if (ALLOWED_SIZES_GPT_IMAGE_1.includes(size) === false) {
         throw new Error(`Size must be one of ${ALLOWED_SIZES_GPT_IMAGE_1.join(', ')}`);
-      } 
+      }
 
       if (quality && ALLOWED_QUALITIES_GPT_IMAGE_1.includes(quality) === false) {
         throw new Error(`Quality must be one of ${ALLOWED_QUALITIES_GPT_IMAGE_1.join(', ')}`);
@@ -104,7 +104,6 @@ class ChatGPT {
       prompt,
       n,
       size,
-      response_format: 'b64_json'
     };
 
     if (model === 'gpt-image-1') {
@@ -115,6 +114,8 @@ class ChatGPT {
       if (background) {
         query.background = background;
       }
+    } else {
+      query.response_format = 'b64_json';
     }
 
     if (model !== 'dall-e-2') {
@@ -122,7 +123,7 @@ class ChatGPT {
     }
 
     const response = await this._client.images.generate(query);
-    
+
     if (!response.data) {
       throw new Error('No image data received from OpenAI');
     }

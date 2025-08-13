@@ -29,7 +29,7 @@ class Dream {
         if (style) {
             formData.append('style_preset', style);
         }
-        if (seed !== undefined) {
+        if (seed !== undefined && seed !== null) {
             formData.append('seed', seed.toString());
         }
         if (negativePrompt) {
@@ -40,7 +40,7 @@ class Dream {
         }
         // SD3-specific parameters
         if (this._engine === 'sd3') {
-            if (cfgScale !== undefined) {
+            if (cfgScale !== undefined && cfgScale !== null) {
                 formData.append('cfg_scale', cfgScale.toString());
             }
             if (model) {
@@ -69,14 +69,16 @@ class Dream {
         const formData = new form_data_1.default();
         formData.append('prompt', prompt);
         formData.append('image', image, { filename: 'input_image.png', contentType: 'image/png' });
-        formData.append('strength', strength.toString());
+        if (typeof strength === 'number') {
+            formData.append('strength', strength.toString());
+        }
         if (aspectRatio !== '1:1') {
             formData.append('aspect_ratio', aspectRatio);
         }
         if (style) {
             formData.append('style_preset', style);
         }
-        if (seed !== undefined) {
+        if (seed !== undefined && seed !== null) {
             formData.append('seed', seed.toString());
         }
         if (negativePrompt) {
@@ -88,7 +90,7 @@ class Dream {
         // SD3-specific parameters
         if (this._engine === 'sd3') {
             formData.append('mode', 'image-to-image');
-            if (cfgScale !== undefined) {
+            if (cfgScale !== undefined && cfgScale !== null) {
                 formData.append('cfg_scale', cfgScale.toString());
             }
             if (model) {

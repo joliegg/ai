@@ -20,7 +20,7 @@ class Dream {
      * @returns Buffer containing the generated image
      */
     async generate(options) {
-        const { prompt, aspectRatio = '1:1', style = null, seed, negativePrompt, outputFormat = 'png', cfgScale, model } = options;
+        const { prompt, aspectRatio = '1:1', style = null, seed, negativePrompt, outputFormat = 'png', cfgScale, model, } = options;
         const formData = new form_data_1.default();
         formData.append('prompt', prompt);
         if (aspectRatio !== '1:1') {
@@ -51,9 +51,9 @@ class Dream {
             headers: {
                 Authorization: `Bearer ${this._apiKey}`,
                 Accept: 'image/*',
-                ...formData.getHeaders()
+                ...formData.getHeaders(),
             },
-            responseType: 'arraybuffer'
+            responseType: 'arraybuffer',
         });
         return Buffer.from(data);
     }
@@ -65,7 +65,7 @@ class Dream {
      * @returns Buffer containing the generated image
      */
     async generateFromImage(options) {
-        const { image, prompt, strength = 0.35, aspectRatio = '1:1', style = null, seed, negativePrompt, outputFormat = 'png', cfgScale, model } = options;
+        const { image, prompt, strength = 0.35, aspectRatio = '1:1', style = null, seed, negativePrompt, outputFormat = 'png', cfgScale, model, } = options;
         const formData = new form_data_1.default();
         formData.append('prompt', prompt);
         formData.append('image', image, { filename: 'input_image.png', contentType: 'image/png' });
@@ -101,9 +101,9 @@ class Dream {
             headers: {
                 Authorization: `Bearer ${this._apiKey}`,
                 Accept: 'image/*',
-                ...formData.getHeaders()
+                ...formData.getHeaders(),
             },
-            responseType: 'arraybuffer'
+            responseType: 'arraybuffer',
         });
         return Buffer.from(data);
     }

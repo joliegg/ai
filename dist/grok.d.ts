@@ -1,5 +1,5 @@
-import { APIPromise } from 'openai/core.mjs';
-import { ChatCompletion, ChatCompletionMessageParam } from 'openai/resources/chat/index.mjs';
+import { BaseOpenAI } from './base-openai';
+import { ProviderConfig } from './types';
 export type OutputFormat = 'png' | 'jpeg' | 'webp';
 export type ImageGenerationModel = 'grok-2-image';
 export interface GenerateOptions {
@@ -7,12 +7,13 @@ export interface GenerateOptions {
     n: number;
     model: ImageGenerationModel;
 }
-declare class Grok {
-    private _client?;
-    constructor(apiKey: string);
-    complete(messages: ChatCompletionMessageParam[], model?: string, maxTokens?: number): APIPromise<ChatCompletion> | undefined;
+declare class Grok extends BaseOpenAI {
+    protected readonly _provider = "grok";
+    constructor(apiKey?: string, config?: Partial<ProviderConfig>);
+    get provider(): string;
+    protected getDefaultModel(): string;
     /**
-     * Generate images using OpenAI's image generation models
+     * Generate images using Grok's image generation models
      *
      * @param options - Image generation options
      *

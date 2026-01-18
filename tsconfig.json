@@ -2,15 +2,16 @@
   "compilerOptions": {
     "rootDir": "src",
     "lib": ["es2023"],
-    "module": "Node16",
+    "module": "commonjs",
     "target": "es2022",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node16",
+    "moduleResolution": "node",
     "outDir": "dist",
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "declaration": true
   },
   "include": ["./src", "eslint.config.mjs"],
   "typedocOptions": {

@@ -1,7 +1,6 @@
-import OpenAI from 'openai';
-import { APIPromise } from 'openai/core.mjs';
-import { ChatCompletion, ChatCompletionMessageParam } from 'openai/resources/chat/index.mjs';
-import { ImageGenerateParams } from 'openai/resources/images.mjs';
+import { BaseOpenAI } from './base-openai';
+import { ProviderConfig } from './types';
+import { AIError } from './errors';
 
 export type OutputFormat = 'png' | 'jpeg' | 'webp';
 
@@ -13,65 +12,42 @@ export interface GenerateOptions {
   model: ImageGenerationModel;
 }
 
-class Grok {
-  private _client?: OpenAI;
+class Grok extends BaseOpenAI {
+  protected readonly _provider = 'grok';
 
-  constructor (apiKey: string) {
-    this._client = new OpenAI({ 
-        apiKey,
-        baseURL: "https://api.x.ai/v1",
-        timeout: 360000,
-    });
+  constructor(apiKey?: string, config: Partial<ProviderConfig> = {}) {
+    const resolvedApiKey = apiKey || process.env.GROK_API_KEY;
+    super(resolvedApiKey, 'https://api.x.ai/v1', config);
   }
 
-  complete (messages: ChatCompletionMessageParam[], model: string = 'grok-4', maxTokens: number = 300): APIPromise<ChatCompletion> | undefined {
-    if (this._client instanceof OpenAI === false) {
-      throw new Error('OpenAI client not initialized');
-    }
-
-    return this._client?.chat.completions.create({ model, messages, max_tokens: maxTokens });
+  get provider(): string {
+    return this._provider;
   }
+
+  protected defaultModel(): string {
+    return 'grok-4';
+  }
+
+
 
   /**
-   * Generate images using OpenAI's image generation models
-   * 
+   * Generate images using Grok's image generation models
+   *
    * @param options - Image generation options
-   * 
+   *
    * @returns Promise<Buffer[]> - Array of image buffer
    *
    */
-  async generate (options: GenerateOptions): Promise<Buffer[]> {
-    const { prompt, n, model } = options;
-
-    if (this._client instanceof OpenAI === false) {
-      throw new Error('OpenAI client not initialized');
-    }
+  async generate(options: GenerateOptions): Promise<Buffer[]> {
+    const { n } = options;
 
     if (n > 10) {
-      throw new Error('Cannot generate more than 10 images at once.');
+      throw new AIError('Cannot generate more than 10 images at once.', this._provider, 'INVALID_COUNT');
     }
 
-    const query: ImageGenerateParams = {
-      model,
-      prompt,
-      n,
-      response_format: 'b64_json'
-    };
-
-    const response = await this._client.images.generate(query);
-    
-    if (!response.data) {
-      throw new Error('No image data received from Grok');
-    }
-
-    return response.data.map((image) => {
-      if (!image.b64_json) {
-        throw new Error('No base64 data received from Grok');
-      }
-      return Buffer.from(image.b64_json, 'base64');
-    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return super.generate(options as any);
   }
-
 }
 
 export default Grok;

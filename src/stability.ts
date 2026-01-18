@@ -1,7 +1,24 @@
 import axios from 'axios';
 import FormData from 'form-data';
 
-export type Style = '3d-model' | 'analog-film' | 'anime' | 'cinematic' | 'comic-book' | 'digital-art' | 'enhance' | 'fantasy-art' | 'isometric' | 'line-art' | 'low-poly' | 'modeling-compound' | 'neon-punk' | 'origami' | 'photographic' | 'pixel-art' | 'tile-texture';
+export type Style =
+  | '3d-model'
+  | 'analog-film'
+  | 'anime'
+  | 'cinematic'
+  | 'comic-book'
+  | 'digital-art'
+  | 'enhance'
+  | 'fantasy-art'
+  | 'isometric'
+  | 'line-art'
+  | 'low-poly'
+  | 'modeling-compound'
+  | 'neon-punk'
+  | 'origami'
+  | 'photographic'
+  | 'pixel-art'
+  | 'tile-texture';
 
 export type AspectRatio = '16:9' | '1:1' | '21:9' | '2:3' | '3:2' | '4:5' | '5:4' | '9:16' | '9:21';
 
@@ -39,7 +56,7 @@ class Dream {
   private _apiKey?: string;
   private _engine?: Engine;
 
-  constructor (apiKey: string, engine: Engine = 'ultra') {
+  constructor(apiKey: string, engine: Engine = 'ultra') {
     this._apiKey = apiKey;
     this._engine = engine;
   }
@@ -51,7 +68,7 @@ class Dream {
    *
    * @returns Buffer containing the generated image
    */
-  async generate (options: GenerateOptions): Promise<Buffer> {
+  async generate(options: GenerateOptions): Promise<Buffer> {
     const {
       prompt,
       aspectRatio = '1:1',
@@ -60,7 +77,7 @@ class Dream {
       negativePrompt,
       outputFormat = 'png',
       cfgScale,
-      model
+      model,
     } = options;
 
     const formData = new FormData();
@@ -98,14 +115,18 @@ class Dream {
       }
     }
 
-    const { data } = await axios.post(`https://api.stability.ai/v2beta/stable-image/generate/${this._engine}`, formData, {
-      headers: {
-        Authorization: `Bearer ${this._apiKey}`,
-        Accept: 'image/*',
-        ...formData.getHeaders()
-      },
-      responseType: 'arraybuffer'
-    });
+    const { data } = await axios.post(
+      `https://api.stability.ai/v2beta/stable-image/generate/${this._engine}`,
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${this._apiKey}`,
+          Accept: 'image/*',
+          ...formData.getHeaders(),
+        },
+        responseType: 'arraybuffer',
+      }
+    );
 
     return Buffer.from(data);
   }
@@ -117,7 +138,7 @@ class Dream {
    *
    * @returns Buffer containing the generated image
    */
-  async generateFromImage (options: ImageToImageOptions): Promise<Buffer> {
+  async generateFromImage(options: ImageToImageOptions): Promise<Buffer> {
     const {
       image,
       prompt,
@@ -128,7 +149,7 @@ class Dream {
       negativePrompt,
       outputFormat = 'png',
       cfgScale,
-      model
+      model,
     } = options;
 
     const formData = new FormData();
@@ -173,18 +194,21 @@ class Dream {
       }
     }
 
-    const { data } = await axios.post(`https://api.stability.ai/v2beta/stable-image/generate/${this._engine}`, formData, {
-      headers: {
-        Authorization: `Bearer ${this._apiKey}`,
-        Accept: 'image/*',
-        ...formData.getHeaders()
-      },
-      responseType: 'arraybuffer'
-    });
+    const { data } = await axios.post(
+      `https://api.stability.ai/v2beta/stable-image/generate/${this._engine}`,
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${this._apiKey}`,
+          Accept: 'image/*',
+          ...formData.getHeaders(),
+        },
+        responseType: 'arraybuffer',
+      }
+    );
 
     return Buffer.from(data);
   }
-
 }
 
 export default Dream;

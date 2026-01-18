@@ -2,545 +2,1213 @@
 
 # Chat AI
 
-This library provides a unified interface for multiple AI providers including OpenAI, StabilityAI, Google Gemini, DeepSeek, and Grok for both chat completions and image generation.
+A unified TypeScript/JavaScript library for multiple AI providers including OpenAI, Anthropic Claude, Google Gemini,
+DeepSeek, Grok, Mistral, Ollama, and Stability AI for chat completions, streaming, function calling, embeddings, image
+generation, and video generation.
+
+## Features
+
+- **Unified Interface** - Consistent API across all providers
+- **Streaming Support** - Real-time streaming responses
+- **Function/Tool Calling** - Native support for AI function calling
+- **Embeddings** - Generate text embeddings for RAG and search
+- **Image Generation** - DALL-E, Stability AI, Grok, and Imagen
+- **Video Generation** - Sora-2 video generation with async polling
+- **Video Understanding** - Analyze videos with Gemini
+- **Vision/Multimodal** - Easy image, audio, video, and document input helpers
+- **Audio Input** - Send audio in chat messages (GPT-4o, Gemini)
+- **Audio Output** - Speech-to-text (Whisper) and text-to-speech
+- **Document Input** - Process PDFs and documents in chat
+- **Realtime API** - Bidirectional audio streaming for voice apps
+- **Conversation Manager** - Multi-turn chat with history management
+- **Batch Processing** - Process multiple requests in parallel
+- **Content Moderation** - Check content for policy violations
+- **File Management** - Upload and manage files
+- **Model Listing** - List available models from providers
+- **Token Counting** - Estimate token usage before sending
+- **Error Handling** - Comprehensive error types with automatic parsing
+- **Retry Logic** - Built-in exponential backoff for transient failures
+- **TypeScript** - Full type definitions included
+- **Environment Variables** - Auto-detect API keys from environment
 
 ## Installation
 
 ```bash
+bun add @joliegg/ai
+# or
+npm install @joliegg/ai
+# or
 yarn add @joliegg/ai
 ```
 
 ## Quick Start
 
-```javascript
-import { ChatGPT, Dream, Gemini, DeepSeek, Grok } from '@joliegg/ai';
+```typescript
+import { ChatGPT, Claude, Gemini, DeepSeek, Grok, Mistral, Ollama, Dream, configure } from '@joliegg/ai';
 
-// Initialize with your API keys
-const chatGPT = new ChatGPT(process.env.OPENAI_API_KEY);
-const dream = new Dream(process.env.STABILITY_API_KEY);
-const gemini = new Gemini(process.env.GOOGLE_API_KEY);
-const deepSeek = new DeepSeek(process.env.DEEPSEEK_API_KEY);
-const grok = new Grok(process.env.GROK_API_KEY);
+// Optional: Configure global settings
+configure({
+  timeout: 60000,
+  maxRetries: 3,
+  debug: false,
+});
+
+// Initialize providers (API keys auto-detected from environment)
+const chatGPT = new ChatGPT(); // Uses OPENAI_API_KEY
+const claude = new Claude(); // Uses ANTHROPIC_API_KEY or CLAUDE_API_KEY
+const gemini = new Gemini(); // Uses GOOGLE_API_KEY or GEMINI_API_KEY
+const mistral = new Mistral(); // Uses MISTRAL_API_KEY
+const ollama = new Ollama(); // Uses local Ollama (no key needed)
+
+// Or pass API keys explicitly
+const chatGPT2 = new ChatGPT('your-openai-api-key');
 ```
 
-## Chat Completions
+## Unified Interface
 
-#### OpenAI ChatGPT
+All providers support a consistent interface for chat completions:
 
-```javascript
+```typescript
+import { ChatGPT, Claude, Gemini } from '@joliegg/ai';
+
+const ai = new ChatGPT(); // or new Claude(), new Gemini(), etc.
+
+// Completion with consistent response format
+const response = await ai.complete(
+  [
+    { role: 'system', content: 'You are a helpful assistant.' },
+    { role: 'user', content: 'What is the capital of France?' },
+  ],
+  {
+    model: 'gpt-4o',
+    maxTokens: 500,
+    temperature: 0.7,
+  }
+);
+
+console.log(response.content); // "The capital of France is Paris."
+console.log(response.provider); // "openai"
+console.log(response.finishReason); // "stop"
+console.log(response.usage); // { promptTokens: 25, completionTokens: 10, totalTokens: 35 }
+```
+
+## Streaming
+
+Real-time streaming is supported across all chat providers:
+
+```typescript
+import { ChatGPT } from '@joliegg/ai';
+
+const chatGPT = new ChatGPT();
+
+// Stream with async iteration
+for await (const chunk of chatGPT.stream([{ role: 'user', content: 'Write a short story about a robot.' }])) {
+  process.stdout.write(chunk.delta.content || '');
+}
+
+// Stream with callbacks
+for await (const chunk of chatGPT.stream([{ role: 'user', content: 'Explain quantum computing.' }], {
+  onToken: (token) => process.stdout.write(token),
+  onToolCall: (toolCall) => console.log('Tool called:', toolCall),
+})) {
+  // Chunks are also yielded
+}
+```
+
+## Function/Tool Calling
+
+Native support for AI function calling with OpenAI, Claude, and Gemini:
+
+```typescript
+import { ChatGPT } from '@joliegg/ai';
+
+const chatGPT = new ChatGPT();
+
+const response = await chatGPT.complete([{ role: 'user', content: 'What is the weather in San Francisco?' }], {
+  tools: [
+    {
+      name: 'get_weather',
+      description: 'Get the current weather for a location',
+      parameters: {
+        type: 'object',
+        properties: {
+          location: {
+            type: 'string',
+            description: 'The city and state, e.g. San Francisco, CA',
+          },
+          unit: {
+            type: 'string',
+            enum: ['celsius', 'fahrenheit'],
+            description: 'Temperature unit',
+          },
+        },
+        required: ['location'],
+      },
+    },
+  ],
+  toolChoice: 'auto',
+});
+
+if (response.toolCalls) {
+  for (const toolCall of response.toolCalls) {
+    console.log('Function:', toolCall.name);
+    console.log('Arguments:', toolCall.arguments);
+    // { location: 'San Francisco, CA', unit: 'fahrenheit' }
+  }
+}
+```
+
+## Embeddings
+
+Generate text embeddings for RAG, semantic search, and more:
+
+```typescript
+import { ChatGPT, Gemini, Mistral } from '@joliegg/ai';
+
+// OpenAI embeddings
+const chatGPT = new ChatGPT();
+const openaiEmbed = await chatGPT.embed('Hello world', {
+  model: 'text-embedding-3-small',
+  dimensions: 512,
+});
+console.log(openaiEmbed.embeddings[0]); // [0.123, -0.456, ...]
+
+// Gemini embeddings
+const gemini = new Gemini();
+const geminiEmbed = await gemini.embed(['Text 1', 'Text 2']);
+console.log(geminiEmbed.embeddings); // [[...], [...]]
+
+// Mistral embeddings
+const mistral = new Mistral();
+const mistralEmbed = await mistral.embed('Hello world');
+```
+
+## Error Handling
+
+Comprehensive error handling with typed error classes:
+
+```typescript
+import { ChatGPT, AIError, AuthenticationError, RateLimitError, TimeoutError, isRetryableError } from '@joliegg/ai';
+
+const chatGPT = new ChatGPT();
+
+try {
+  const response = await chatGPT.complete([{ role: 'user', content: 'Hello' }]);
+} catch (error) {
+  if (error instanceof AuthenticationError) {
+    console.error('Invalid API key:', error.message);
+  } else if (error instanceof RateLimitError) {
+    console.error('Rate limited, retry after:', error.retryAfter);
+  } else if (error instanceof TimeoutError) {
+    console.error('Request timed out');
+  } else if (error instanceof AIError) {
+    console.error('AI Error:', error.provider, error.code, error.message);
+  }
+
+  // Check if error is retryable
+  if (isRetryableError(error)) {
+    // Retry logic is handled automatically, but you can implement custom logic
+  }
+}
+```
+
+## Provider-Specific Examples
+
+### OpenAI ChatGPT
+
+```typescript
 import { ChatGPT } from '@joliegg/ai';
 
 const chatGPT = new ChatGPT('your-openai-api-key');
 
-// Simple completion with default model
-const completion = await chatGPT.complete([
-  { role: 'user', content: 'Describe yourself in 5 words' }
+// Chat completion
+const response = await chatGPT.complete([
+  { role: 'system', content: 'You are a helpful assistant.' },
+  { role: 'user', content: 'Write a haiku about coding.' },
 ]);
 
-// Completion with custom model and token limit
-const completion2 = await chatGPT.complete([
-  { role: 'user', content: 'Write a detailed explanation of quantum computing' }
-], 'gpt-4o-mini', 500);
+console.log(response.content);
 
-// Chat conversation
-const conversation = await chatGPT.complete([
-  { role: 'system', content: 'You are a helpful coding assistant.' },
-  { role: 'user', content: 'How do I implement a binary search?' },
-  { role: 'assistant', content: 'Here\'s how to implement binary search...' },
-  { role: 'user', content: 'Can you show me the Python version?' }
-], 'gpt-4o', 800);
-
-console.log(completion.choices[0].message.content);
+// With options
+const response2 = await chatGPT.complete([{ role: 'user', content: 'Describe yourself in 5 words' }], {
+  model: 'gpt-4o-mini',
+  maxTokens: 300,
+});
 ```
 
-#### Google Gemini
+### Anthropic Claude
 
-```javascript
+```typescript
+import { Claude } from '@joliegg/ai';
+
+const claude = new Claude('your-anthropic-api-key');
+
+// Chat completion
+const response = await claude.complete([{ role: 'user', content: 'Explain machine learning' }], {
+  model: 'claude-sonnet-4-0',
+  maxTokens: 500,
+});
+
+// Streaming
+for await (const chunk of claude.stream([{ role: 'user', content: 'Write a poem about AI' }])) {
+  process.stdout.write(chunk.delta.content || '');
+}
+
+// With tools
+const toolResponse = await claude.complete([{ role: 'user', content: 'What time is it in Tokyo?' }], {
+  tools: [
+    {
+      name: 'get_time',
+      description: 'Get current time in a timezone',
+      parameters: {
+        type: 'object',
+        properties: {
+          timezone: { type: 'string' },
+        },
+        required: ['timezone'],
+      },
+    },
+  ],
+});
+```
+
+### Google Gemini
+
+```typescript
 import { Gemini } from '@joliegg/ai';
 
 const gemini = new Gemini('your-google-api-key');
 
-// Single prompt with default model
-const result = await gemini.complete('Explain quantum computing in simple terms');
+// Chat completion
+const response = await gemini.complete([{ role: 'user', content: 'Explain quantum computing' }]);
 
-// Single prompt with custom model
-const result2 = await gemini.complete(
-  'Write a Python function to calculate fibonacci numbers',
-  null,
-  'gemini-1.5-pro'
+// With conversation history
+const response2 = await gemini.complete(
+  [
+    { role: 'user', content: 'Hello!' },
+    { role: 'assistant', content: 'Hi there!' },
+    { role: 'user', content: 'What is the capital of France?' },
+  ],
+  { model: 'gemini-2.5-pro' }
 );
 
-// Chat conversation with history
-const chatResult = await gemini.complete(
-  'What is the capital of France?',
-  {
-    history: [
-      { role: 'user', parts: ['Hello!'] },
-      { role: 'model', parts: ['Hi there! How can I help you today?'] }
-    ]
-  },
-  'gemini-2.5-pro'
-);
-
-// Multi-part content
-const multiPartResult = await gemini.complete([
-  'Analyze this image and describe what you see:',
-  { inlineData: { mimeType: 'image/jpeg', data: 'base64-encoded-image' } }
-]);
+// Embeddings
+const embeddings = await gemini.embed('Hello world');
 ```
 
-#### DeepSeek
+### DeepSeek
 
-```javascript
+```typescript
 import { DeepSeek } from '@joliegg/ai';
 
 const deepSeek = new DeepSeek('your-deepseek-api-key');
 
-// Simple completion with default model
-const completion = await deepSeek.complete([
-  { role: 'user', content: 'Write a short poem about coding' }
-]);
+// Chat completion
+const response = await deepSeek.complete([{ role: 'user', content: 'Write a Python function for binary search' }], {
+  model: 'deepseek-coder',
+  maxTokens: 500,
+});
 
-// Completion with custom model and token limit
-const completion2 = await deepSeek.complete([
-  { role: 'user', content: 'Explain the concept of recursion with examples' }
-], 'deepseek-coder', 400);
-
-// Chat conversation
-const conversation = await deepSeek.complete([
-  { role: 'system', content: 'You are a programming tutor.' },
-  { role: 'user', content: 'What is object-oriented programming?' },
-  { role: 'assistant', content: 'Object-oriented programming is a paradigm...' },
-  { role: 'user', content: 'Can you give me a practical example?' }
-], 'deepseek-chat', 600);
-
-console.log('DeepSeek Chat completion:', conversation.choices[0].message.content);
+// Streaming
+for await (const chunk of deepSeek.stream([{ role: 'user', content: 'Explain recursion' }])) {
+  process.stdout.write(chunk.delta.content || '');
+}
 ```
 
-#### Grok
+### Grok
 
-```javascript
+```typescript
 import { Grok } from '@joliegg/ai';
 
 const grok = new Grok('your-grok-api-key');
 
-// Simple completion with default model
-const completion = await grok.complete([
-  { role: 'user', content: 'Write a creative short story about AI' }
-]);
+// Chat completion
+const response = await grok.complete([{ role: 'user', content: 'What makes you unique?' }], {
+  model: 'grok-4',
+  maxTokens: 400,
+});
 
-// Completion with custom model and token limit
-const completion2 = await grok.complete([
-  { role: 'user', content: 'Explain quantum entanglement in simple terms' }
-], 'grok-4', 400);
+// Streaming
+for await (const chunk of grok.stream([{ role: 'user', content: 'Tell me a joke' }])) {
+  process.stdout.write(chunk.delta.content || '');
+}
+```
 
-// Chat conversation
-const conversation = await grok.complete([
-  { role: 'system', content: 'You are a witty and knowledgeable assistant.' },
-  { role: 'user', content: 'What makes you different from other AI models?' },
-  { role: 'assistant', content: 'I like to think I bring a bit more personality...' },
-  { role: 'user', content: 'Tell me about your reasoning capabilities' }
-], 'grok-4', 600);
+### Mistral
 
-console.log('Grok response:', completion.choices[0].message.content);
+```typescript
+import { Mistral } from '@joliegg/ai';
+
+const mistral = new Mistral('your-mistral-api-key');
+
+// Chat completion
+const response = await mistral.complete([{ role: 'user', content: 'Explain neural networks' }], {
+  model: 'mistral-large-latest',
+});
+
+// Embeddings
+const embeddings = await mistral.embed('Hello world', {
+  model: 'mistral-embed',
+});
+
+// Streaming
+for await (const chunk of mistral.stream([{ role: 'user', content: 'Write a story' }])) {
+  process.stdout.write(chunk.delta.content || '');
+}
+```
+
+### Ollama (Local LLMs)
+
+```typescript
+import { Ollama } from '@joliegg/ai';
+
+// Connect to local Ollama instance
+const ollama = new Ollama(); // Defaults to localhost:11434
+
+// Or specify custom host
+const ollama2 = new Ollama(undefined, {
+  baseURL: 'http://my-server:11434/v1',
+});
+
+// Chat completion with local model
+const response = await ollama.complete([{ role: 'user', content: 'Hello!' }], {
+  model: 'llama3.2',
+});
+
+// Streaming
+for await (const chunk of ollama.stream([{ role: 'user', content: 'Tell me about yourself' }], { model: 'mistral' })) {
+  process.stdout.write(chunk.delta.content || '');
+}
+
+// Embeddings (requires embedding model like nomic-embed-text)
+const embeddings = await ollama.embed('Hello world', {
+  model: 'nomic-embed-text',
+});
 ```
 
 ## Image Generation
 
-#### OpenAI DALL-E
+### OpenAI DALL-E
 
-```javascript
+```typescript
 import { ChatGPT } from '@joliegg/ai';
+import fs from 'fs';
 
 const chatGPT = new ChatGPT('your-openai-api-key');
 
-// Generate with DALL-E 3 (highest quality)
+// Generate with DALL-E 3
 const images = await chatGPT.generate({
   prompt: 'A yellow cat looking at a birthday cake',
-  n: 1, // number of images (DALL-E 3 only supports 1)
+  n: 1,
   size: '1024x1024',
   model: 'dall-e-3',
   quality: 'standard',
   format: 'png',
-  background: 'auto'
+  background: 'auto',
 });
 
 fs.writeFileSync('cat-cake.png', images[0]);
 
-// Generate with DALL-E 2 (multiple images possible)
+// Generate multiple with DALL-E 2
 const images2 = await chatGPT.generate({
   prompt: 'A futuristic city skyline at sunset',
-  n: 4, // generate 4 variations
+  n: 4,
   size: '512x512',
   model: 'dall-e-2',
   quality: 'standard',
   format: 'png',
-  background: 'auto'
-});
-
-// Save all generated images
-images2.forEach((buffer, index) => {
-  fs.writeFileSync(`city-${index}.png`, buffer);
-});
-
-// Generate with GPT Image 1 (auto size)
-const images3 = await chatGPT.generate({
-  prompt: 'A watercolor painting of mountains in autumn',
-  n: 1,
-  size: 'auto', // automatic size selection
-  model: 'gpt-image-1',
-  quality: 'standard',
-  format: 'png',
-  background: 'auto'
-});
-
-// Generate portrait with DALL-E 3
-const portrait = await chatGPT.generate({
-  prompt: 'A professional headshot of a software engineer',
-  n: 1,
-  size: '1024x1792', // portrait aspect ratio
-  model: 'dall-e-3',
-  quality: 'high',
-  format: 'png',
-  background: 'auto'
-});
-
-// Generate landscape with DALL-E 3
-const landscape = await chatGPT.generate({
-  prompt: 'A panoramic view of a mountain range',
-  n: 1,
-  size: '1792x1024', // landscape aspect ratio
-  model: 'dall-e-3',
-  quality: 'high',
-  format: 'webp',
-  background: 'auto'
+  background: 'auto',
 });
 ```
 
-#### Stability AI Dream
+### Stability AI
 
-```javascript
+```typescript
 import { Dream } from '@joliegg/ai';
+import fs from 'fs';
 
-// Initialize with different engines
-const dreamUltra = new Dream('your-stability-api-key', 'ultra'); // highest quality
-const dreamCore = new Dream('your-stability-api-key', 'core'); // balanced
-const dreamSD3 = new Dream('your-stability-api-key', 'sd3'); // Stable Diffusion 3
+const dream = new Dream('your-stability-api-key', 'ultra');
 
-// Generate image from text with fantasy style
-const image = await dreamUltra.generate({
-  prompt: 'A magical forest with glowing mushrooms and fairy lights',
-  aspectRatio: '1:1',
+// Text to image
+const image = await dream.generate({
+  prompt: 'A magical forest with glowing mushrooms',
+  aspectRatio: '16:9',
   style: 'fantasy-art',
   seed: 12345,
-  outputFormat: 'png'
+  outputFormat: 'png',
 });
 
-fs.writeFileSync('magical-forest.png', image);
+fs.writeFileSync('forest.png', image);
 
-// Generate with different style presets and aspect ratios
-const animeImage = await dreamUltra.generate({
-  prompt: 'A cyberpunk city street at night',
-  aspectRatio: '21:9', // ultra-wide landscape
-  style: 'anime',
-  negativePrompt: 'blurry, low quality',
-  outputFormat: 'webp'
-});
-
-const photographicImage = await dreamUltra.generate({
-  prompt: 'A professional product photo of a modern smartphone',
-  aspectRatio: '1:1',
-  style: 'photographic',
-  seed: 98765,
-  outputFormat: 'jpeg'
-});
-
-// Generate portrait and panoramic images
-const portraitImage = await dreamUltra.generate({
-  prompt: 'A portrait of a wise old wizard',
-  aspectRatio: '2:3', // portrait aspect ratio
-  style: 'cinematic',
-  negativePrompt: 'cartoon, anime'
-});
-
-const panoramicImage = await dreamUltra.generate({
-  prompt: 'A panoramic view of a mountain landscape',
-  aspectRatio: '21:9', // panoramic landscape
+// Image to image
+const inputBuffer = fs.readFileSync('input.png');
+const edited = await dream.generateFromImage({
+  image: inputBuffer,
+  prompt: 'Make it more vibrant',
+  strength: 0.5,
   style: 'enhance',
-  outputFormat: 'webp'
-});
-
-// Generate using SD3 engine with advanced options
-const sd3Image = await dreamSD3.generate({
-  prompt: 'Futuristic cityscape at sunset',
-  aspectRatio: '16:9',
-  style: 'cinematic',
-  cfgScale: 7, // SD3 only
-  model: 'sd3.5-large-turbo', // SD3 only - choose specific variant
-  seed: 54321,
-  negativePrompt: 'dark, gloomy'
-});
-
-// Generate image from existing image (image-to-image)
-const inputImageBuffer = fs.readFileSync('input-image.png');
-const editedImage = await dreamUltra.generateFromImage({
-  image: inputImageBuffer,
-  prompt: 'Make this image more vibrant and colorful with a sunset glow',
-  strength: 0.35, // how much to preserve original
-  aspectRatio: '1:1',
-  style: 'enhance',
-  outputFormat: 'png'
-});
-
-// Save the edited image
-fs.writeFileSync('enhanced-image.png', editedImage);
-
-// Image-to-image with different strength values
-const strongEdit = await dreamUltra.generateFromImage({
-  image: inputImageBuffer,
-  prompt: 'Transform this into a watercolor painting',
-  strength: 0.8, // high strength = more creative changes
-  aspectRatio: '1:1',
-  style: 'digital-art',
-  seed: 11111
-});
-
-const subtleEdit = await dreamUltra.generateFromImage({
-  image: inputImageBuffer,
-  prompt: 'Slightly brighten the colors',
-  strength: 0.1, // low strength = subtle changes
-  aspectRatio: '1:1',
-  style: 'enhance',
-  negativePrompt: 'oversaturated'
-});
-
-// SD3 image-to-image with advanced options
-const sd3Edit = await dreamSD3.generateFromImage({
-  image: inputImageBuffer,
-  prompt: 'Convert to a futuristic sci-fi scene',
-  strength: 0.6,
-  aspectRatio: '16:9',
-  style: 'cinematic',
-  cfgScale: 8, // SD3 only
-  model: 'sd3.5-large', // SD3 only
-  negativePrompt: 'blurry, artifacts'
 });
 ```
 
-#### Grok Image Generation
+### Grok Image Generation
 
-```javascript
+```typescript
 import { Grok } from '@joliegg/ai';
+import fs from 'fs';
 
 const grok = new Grok('your-grok-api-key');
 
-// Generate single image with Grok
 const images = await grok.generate({
-  prompt: 'A futuristic robot exploring an alien planet with purple skies',
-  n: 1,
-  model: 'grok-2-image'
-});
-
-// images is now a Buffer[] - save the first image
-fs.writeFileSync('robot-planet.png', images[0]);
-
-// Generate multiple variations
-const multipleImages = await grok.generate({
-  prompt: 'Minimalist tech startup office design, modern and clean',
-  n: 4, // Generate 4 variations
-  model: 'grok-2-image'
-});
-
-// Save all generated images
-multipleImages.forEach((buffer, index) => {
-  fs.writeFileSync(`office-design-${index}.png`, buffer);
-});
-
-// Creative and artistic prompts
-const artImage = await grok.generate({
-  prompt: 'Abstract digital art representing the concept of artificial intelligence, vibrant colors and geometric patterns',
-  n: 1,
-  model: 'grok-2-image'
-});
-
-// Photorealistic scenes
-const photoImage = await grok.generate({
-  prompt: 'Photorealistic image of a cozy coffee shop on a rainy day, warm lighting, people reading books',
+  prompt: 'A futuristic robot exploring an alien planet',
   n: 2,
-  model: 'grok-2-image'
+  model: 'grok-2-image',
 });
 
-// Fantasy and sci-fi themes
-const fantasyImages = await grok.generate({
-  prompt: 'Epic fantasy landscape with floating islands, waterfalls, and magical creatures in the distance',
-  n: 1,
-  model: 'grok-2-image'
+images.forEach((buffer, i) => {
+  fs.writeFileSync(`robot-${i}.png`, buffer);
+});
+```
+
+## Video Generation (Sora-2)
+
+Generate videos using OpenAI's Sora-2 model:
+
+```typescript
+import { ChatGPT } from '@joliegg/ai';
+import fs from 'fs';
+
+const chatGPT = new ChatGPT();
+
+// Start a video generation job
+const job = await chatGPT.generateVideo({
+  prompt: 'A sweeping drone shot over ancient ruins at sunrise',
+  model: 'sora-2', // or 'sora-2-pro' for higher quality
+  size: '1280x720', // landscape, or '720x1280' for portrait
+  seconds: 8, // 4, 8, or 12 seconds
 });
 
-console.log('Generated', fantasyImages.length, 'fantasy images');
+console.log('Job started:', job.id);
+console.log('Status:', job.status); // 'pending' or 'processing'
+
+// Poll for completion
+const result = await chatGPT.getVideo(job.id);
+if (result.status === 'completed') {
+  console.log('Video URL:', result.videoUrl);
+}
+
+// Or use the convenience method to wait for completion
+const video = await chatGPT.generateVideoAndWait({
+  prompt: 'A cat playing piano in a jazz club',
+  model: 'sora-2-pro',
+  seconds: 4,
+});
+
+console.log('Video ready:', video.videoUrl);
+
+// Download and save the video
+const videoBuffer = await chatGPT.downloadVideo(video.videoUrl);
+fs.writeFileSync('cat-piano.mp4', videoBuffer);
+
+// Or generate and download in one step
+const buffer = await chatGPT.generateVideoBuffer({
+  prompt: 'Northern lights dancing over a frozen lake',
+  size: '1920x1080',
+  seconds: 12,
+});
+
+fs.writeFileSync('northern-lights.mp4', buffer);
 ```
 
-## Configuration Options
+### Using Reference Images
 
-### OpenAI Image Generation Options
+Guide the video style with a reference image:
 
 ```typescript
-export interface GenerateOptions {
-  prompt: string;
-  n: number;          // Number of images to generate
-  size: Size;         // Image dimensions
-  model: ImageGenerationModel;
-  quality: Quality;   // Image quality
-  format: OutputFormat; // Output format
-  background: Background; // Background handling
-}
+import { ChatGPT } from '@joliegg/ai';
+import fs from 'fs';
+
+const chatGPT = new ChatGPT();
+
+// Load reference image
+const referenceImage = fs.readFileSync('./style-reference.jpg');
+
+const video = await chatGPT.generateVideoAndWait({
+  prompt: 'A person walking through a cyberpunk city at night',
+  inputReference: referenceImage,
+  model: 'sora-2-pro',
+  size: '1280x720',
+  seconds: 8,
+});
 ```
 
-#### Available Values:
+### Video Generation Options
 
-**Sizes:**
-- DALL-E 2: `'256x256' | '512x512' | '1024x1024'`
-- DALL-E 3: `'1024x1024' | '1024x1792' | '1792x1024'`
-- GPT Image 1: `'1024x1024' | '1536x1024' | '1024x1536' | 'auto'`
+| Option           | Type   | Default      | Description                            |
+| ---------------- | ------ | ------------ | -------------------------------------- |
+| `prompt`         | string | required     | Description of the video to generate   |
+| `model`          | string | `'sora-2'`   | `'sora-2'` or `'sora-2-pro'`           |
+| `size`           | string | `'1280x720'` | Resolution (see supported sizes below) |
+| `seconds`        | number | `4`          | Duration: `4`, `8`, or `12` seconds    |
+| `inputReference` | Buffer | optional     | Reference image to guide visual style  |
 
-**Models:** `'gpt-image-1' | 'dall-e-3' | 'dall-e-2'`
+### Supported Video Sizes
 
-**Quality:** `'standard' | 'hd'`
+| Size        | Aspect Ratio | Description |
+| ----------- | ------------ | ----------- |
+| `1280x720`  | 16:9         | Landscape   |
+| `720x1280`  | 9:16         | Portrait    |
+| `1920x1080` | 16:9         | Full HD     |
+| `1080x1920` | 9:16         | Full HD     |
+| `1280x1280` | 1:1          | Square      |
 
-**Format:** `'png' | 'jpeg' | 'webp'`
+## Vision/Multimodal
 
-**Background:** `'transparent' | 'opaque' | 'auto'`
-
-### Grok Image Generation Options
+Easy helpers for working with images in chat:
 
 ```typescript
-export interface GenerateOptions {
-  prompt: string;
-  n: number;          // Number of images to generate (max 10)
-  model: ImageGenerationModel;
-}
+import {
+  ChatGPT,
+  imageFromFile,
+  imageFromURL,
+  imageFromBuffer,
+  withImages,
+  userMessage,
+  createMessageBuilder,
+} from '@joliegg/ai';
+
+const chatGPT = new ChatGPT();
+
+// Create image from file
+const image = imageFromFile('./photo.jpg');
+
+// Create image from URL
+const imageUrl = imageFromURL('https://example.com/image.png');
+
+// Create image from buffer
+const imageBuffer = imageFromBuffer(buffer, 'image/png');
+
+// Create a message with text and images
+const message = userMessage(withImages('What is in this image?', image));
+
+// Use with complete
+const response = await chatGPT.complete([message]);
+
+// Or use MessageBuilder for complex conversations
+const messages = createMessageBuilder()
+  .system('You are a helpful assistant that can see images.')
+  .userWithImages('Describe this photo', imageFromFile('./vacation.jpg'))
+  .build();
+
+const response2 = await chatGPT.complete(messages);
 ```
 
-#### Available Values:
+## Document Input (PDFs)
 
-**Models:** `'grok-2-image'`
-
-**Count:** 1 to 10 images per request
-
-### Stability AI Generation Options
+Process PDFs and documents in chat with all providers:
 
 ```typescript
-export interface GenerateOptions {
-  prompt: string;
-  aspectRatio?: AspectRatio;
-  style?: Style;
-  seed?: number;
-  negativePrompt?: string;
-  outputFormat?: OutputFormat;
-  // SD3 only parameters:
-  cfgScale?: number;
-  model?: SD3_Engine;
+import { ChatGPT, Claude, Gemini, documentFromFile, userMessage, withDocuments } from '@joliegg/ai';
+
+// Create document from file
+const doc = documentFromFile('./report.pdf');
+
+// Use with OpenAI
+const chatGPT = new ChatGPT();
+const response = await chatGPT.complete([userMessage(withDocuments('Summarize this document', doc))]);
+
+// Use with Claude (excellent PDF support)
+const claude = new Claude();
+const response2 = await claude.complete([userMessage(withDocuments('What are the key findings?', doc))]);
+
+// Use with Gemini
+const gemini = new Gemini();
+const response3 = await gemini.complete([userMessage(withDocuments('Extract the main points', doc))]);
+
+// Multiple documents
+const doc1 = documentFromFile('./report1.pdf');
+const doc2 = documentFromFile('./report2.pdf');
+const response4 = await claude.complete([userMessage(withDocuments('Compare these documents', doc1, doc2))]);
+
+// From buffer or URL
+import { documentFromBuffer, documentFromURL } from '@joliegg/ai';
+
+const docBuffer = documentFromBuffer(pdfBuffer, 'application/pdf', 'report.pdf');
+const docUrl = documentFromURL('https://example.com/document.pdf');
+```
+
+## Audio Input in Chat
+
+Send audio directly in chat messages (GPT-4o, Gemini):
+
+```typescript
+import { ChatGPT, Gemini, audioFromFile, userMessage, withAudio, createMessageBuilder } from '@joliegg/ai';
+
+// Create audio content
+const audio = audioFromFile('./recording.mp3');
+
+// Use with GPT-4o
+const chatGPT = new ChatGPT();
+const response = await chatGPT.complete([userMessage(withAudio('Transcribe and summarize this', audio))]);
+
+// Use with Gemini
+const gemini = new Gemini();
+const response2 = await gemini.complete([userMessage(withAudio('What is being discussed?', audio))]);
+
+// Using MessageBuilder
+const messages = createMessageBuilder()
+  .system('You are a helpful assistant.')
+  .userWithAudio('What language is being spoken?', audioFromFile('./speech.wav'))
+  .build();
+
+// From buffer or URL
+import { audioFromBuffer, audioFromURL } from '@joliegg/ai';
+
+const audioBuffer = audioFromBuffer(wavBuffer, 'audio/wav');
+const audioUrl = audioFromURL('https://example.com/audio.mp3');
+```
+
+## Video Understanding
+
+Analyze videos with Gemini:
+
+```typescript
+import { Gemini, videoFromFile, userMessage, withVideo, createMessageBuilder } from '@joliegg/ai';
+
+const gemini = new Gemini();
+
+// Analyze a video
+const video = videoFromFile('./demo.mp4');
+const response = await gemini.complete([userMessage(withVideo('What happens in this video?', video))]);
+
+// Ask specific questions
+const response2 = await gemini.complete([
+  userMessage(withVideo('How many people appear in this video and what are they doing?', video)),
+]);
+
+// Using MessageBuilder
+const messages = createMessageBuilder()
+  .system('You are a video analysis expert.')
+  .userWithVideo('Describe the key scenes', videoFromFile('./presentation.mp4'))
+  .build();
+
+const response3 = await gemini.complete(messages);
+
+// From buffer or URL
+import { videoFromBuffer, videoFromURL } from '@joliegg/ai';
+
+const videoBuffer = videoFromBuffer(mp4Buffer, 'video/mp4');
+const videoUrl = videoFromURL('https://example.com/video.mp4');
+```
+
+## Realtime API (Voice Apps)
+
+Build voice applications with bidirectional audio streaming:
+
+```typescript
+import { ChatGPT } from '@joliegg/ai';
+
+const chatGPT = new ChatGPT();
+
+// Create a realtime session
+const session = chatGPT.createRealtimeSession({
+  model: 'gpt-4o-realtime-preview',
+  voice: 'nova', // alloy, echo, shimmer, ash, ballad, coral, sage, verse
+  instructions: 'You are a helpful voice assistant.',
+  inputAudioFormat: 'pcm16',
+  outputAudioFormat: 'pcm16',
+  turnDetection: {
+    type: 'server_vad',
+    threshold: 0.5,
+    silenceDurationMs: 500,
+  },
+});
+
+// Connect to the realtime API
+await session.connect();
+
+// Handle events
+session.on('response.audio.delta', (event) => {
+  // event.delta contains base64 audio chunk
+  const audioChunk = Buffer.from(event.delta, 'base64');
+  // Play audio chunk through speaker
+});
+
+session.on('response.audio_transcript.delta', (event) => {
+  // Display real-time transcript
+  process.stdout.write(event.delta);
+});
+
+session.on('conversation.item.created', (event) => {
+  console.log('New conversation item:', event.item);
+});
+
+// Send audio data
+session.sendAudio(audioBuffer); // Send recorded audio
+session.commitAudio(); // Signal end of audio input
+
+// Or send text (for testing)
+session.sendText('Hello, how are you?');
+
+// Cancel ongoing response
+session.cancelResponse();
+
+// Clear audio buffer
+session.clearAudioBuffer();
+
+// Check connection status
+console.log('Connected:', session.isConnected);
+
+// Close session
+session.close();
+```
+
+## Imagen (Gemini Image Generation)
+
+Generate images with Google's Imagen:
+
+```typescript
+import { Gemini } from '@joliegg/ai';
+import fs from 'fs';
+
+const gemini = new Gemini();
+
+// Generate images
+const result = await gemini.generateImage({
+  prompt: 'A serene mountain landscape at sunset with a reflective lake',
+  model: 'imagen-3.0-generate-001', // or 'imagen-3.0-fast-generate-001'
+  numberOfImages: 2,
+  aspectRatio: '16:9', // '1:1', '3:4', '4:3', '9:16', '16:9'
+});
+
+// Save images
+result.images.forEach((buffer, i) => {
+  fs.writeFileSync(`landscape-${i}.png`, buffer);
+});
+
+// With negative prompt and safety settings
+const result2 = await gemini.generateImage({
+  prompt: 'A cute cartoon robot',
+  negativePrompt: 'scary, dark, violent',
+  numberOfImages: 4,
+  aspectRatio: '1:1',
+  personGeneration: 'allow_adult', // or 'dont_allow'
+  safetyFilterLevel: 'block_medium_and_above',
+  addWatermark: false,
+});
+```
+
+## Audio
+
+### Speech-to-Text (Whisper)
+
+Transcribe audio files to text:
+
+```typescript
+import { ChatGPT } from '@joliegg/ai';
+import fs from 'fs';
+
+const chatGPT = new ChatGPT();
+
+// Transcribe from file path
+const transcript = await chatGPT.transcribe('./audio.mp3', {
+  language: 'en',
+  responseFormat: 'verbose_json',
+});
+
+console.log(transcript.text);
+console.log(transcript.duration); // Duration in seconds
+console.log(transcript.segments); // Timestamped segments
+
+// Transcribe from buffer
+const audioBuffer = fs.readFileSync('./audio.mp3');
+const transcript2 = await chatGPT.transcribe(audioBuffer);
+```
+
+### Text-to-Speech
+
+Convert text to spoken audio:
+
+```typescript
+import { ChatGPT } from '@joliegg/ai';
+import fs from 'fs';
+
+const chatGPT = new ChatGPT();
+
+// Generate speech
+const audioBuffer = await chatGPT.speak('Hello, world!', {
+  voice: 'nova', // alloy, echo, fable, onyx, nova, shimmer
+  model: 'tts-1-hd', // tts-1 or tts-1-hd
+  speed: 1.0, // 0.25 to 4.0
+  responseFormat: 'mp3', // mp3, opus, aac, flac, wav, pcm
+});
+
+fs.writeFileSync('output.mp3', audioBuffer);
+```
+
+## Conversation Manager
+
+Manage multi-turn conversations with automatic history:
+
+```typescript
+import { ChatGPT } from '@joliegg/ai';
+
+const chatGPT = new ChatGPT();
+
+// Create a conversation
+const chat = chatGPT.createConversation({
+  systemPrompt: 'You are a helpful coding assistant.',
+  model: 'gpt-4o',
+  maxHistory: 20, // Keep last 20 messages
+});
+
+// Send messages - history is managed automatically
+const response1 = await chat.send('What is recursion?');
+console.log(response1.content);
+
+const response2 = await chat.send('Can you give me an example?');
+console.log(response2.content); // Knows we're talking about recursion
+
+// Stream responses
+for await (const chunk of chat.sendStream('Write a recursive factorial function')) {
+  process.stdout.write(chunk.delta.content || '');
 }
 
-export interface ImageToImageOptions extends GenerateOptions {
-  image: Buffer;
-  strength?: number; // 0.0-1.0, how much to change the input
+// Conversation utilities
+console.log(chat.length); // Number of messages
+console.log(chat.getHistory()); // Get full history
+
+chat.undo(); // Remove last exchange
+chat.clear(); // Clear history (keeps system prompt)
+chat.reset('New system prompt'); // Start fresh
+
+// Fork conversation for branching
+const branch = chat.fork();
+await branch.send('What about iteration instead?');
+
+// Summarize old messages to save tokens
+await chat.summarize(4); // Keep last 4 messages, summarize the rest
+```
+
+## Batch Processing
+
+Process multiple requests efficiently:
+
+```typescript
+import { ChatGPT } from '@joliegg/ai';
+
+const chatGPT = new ChatGPT();
+
+// Define batch requests
+const requests = [
+  { id: 'q1', messages: [{ role: 'user', content: 'What is 2+2?' }] },
+  {
+    id: 'q2',
+    messages: [{ role: 'user', content: 'What is the capital of France?' }],
+  },
+  { id: 'q3', messages: [{ role: 'user', content: 'Who wrote Hamlet?' }] },
+];
+
+// Process with concurrency control (default: 5 parallel requests)
+const results = await chatGPT.completeBatch(
+  requests,
+  { maxTokens: 100 }, // Shared options
+  5 // Max concurrent requests
+);
+
+// Handle results
+for (const result of results) {
+  if (result.error) {
+    console.error(`${result.id} failed:`, result.error.message);
+  } else {
+    console.log(`${result.id}:`, result.response?.content);
+  }
 }
 ```
 
-#### Available Values:
+## Content Moderation
 
-**Aspect Ratios:**
-- `16:9` - Widescreen landscape
-- `1:1` - Square
-- `21:9` - Ultra-wide landscape
-- `2:3` - Portrait
-- `3:2` - Landscape
-- `4:5` - Portrait
-- `5:4` - Landscape
-- `9:16` - Mobile portrait
-- `9:21` - Ultra-tall portrait
+Check content for policy violations:
 
-**Styles:**
-- `3d-model` - 3D rendered objects
-- `analog-film` - Film photography style
-- `anime` - Japanese animation style
-- `cinematic` - Movie-like composition
-- `comic-book` - Comic book art style
-- `digital-art` - Digital painting
-- `enhance` - Enhanced photography
-- `fantasy-art` - Fantasy illustration
-- `isometric` - Isometric 3D style
-- `line-art` - Line drawing style
-- `low-poly` - Low polygon 3D
-- `modeling-compound` - 3D modeling style
-- `neon-punk` - Cyberpunk neon style
-- `origami` - Paper folding art
-- `photographic` - Realistic photography
-- `pixel-art` - Retro pixel graphics
-- `tile-texture` - Seamless texture pattern
+```typescript
+import { ChatGPT } from '@joliegg/ai';
 
-**Engines:**
-- `ultra` - Highest quality (default)
-- `core` - Balanced quality and speed
-- `sd3` - Stable Diffusion 3
+const chatGPT = new ChatGPT();
 
-**SD3.5 Model Variants** (when using `sd3` engine):
-- `sd3.5-large` - 8B parameters, highest quality (6.5 credits)
-- `sd3.5-large-turbo` - Fast version of large (4 credits)  
-- `sd3.5-medium` - 2.5B parameters, balanced (3.5 credits)
+// Moderate single text
+const results = await chatGPT.moderate('Some text to check');
 
-### Model Names
+if (results[0].flagged) {
+  console.log('Content flagged!');
+  console.log('Categories:', results[0].categories);
+  // {
+  //   hate: { flagged: false, score: 0.001 },
+  //   violence: { flagged: true, score: 0.95 },
+  //   ...
+  // }
+}
 
-#### OpenAI Chat Models
-- `gpt-4o` - GPT-4 Omni (default)
-- `gpt-4o-mini` - GPT-4 Omni Mini
-- `gpt-4-turbo` - GPT-4 Turbo
-- `gpt-3.5-turbo` - GPT-3.5 Turbo
+// Moderate multiple texts at once
+const batchResults = await chatGPT.moderate(['First text to check', 'Second text to check', 'Third text to check']);
 
-#### OpenAI Image Models
-- `dall-e-2` - DALL-E 2
-- `dall-e-3` - DALL-E 3
-- `gpt-image-1` - GPT Image 1 (default)
+batchResults.forEach((result, i) => {
+  console.log(`Text ${i + 1}: ${result.flagged ? 'FLAGGED' : 'OK'}`);
+});
+```
 
-#### Google Gemini Models
-- `gemini-2.5-pro` - Gemini 2.5 Pro (default)
-- `gemini-2.0-pro` - Gemini 2.0 Pro
-- `gemini-1.5-pro` - Gemini 1.5 Pro
+## File Management
 
-#### DeepSeek Models
-- `deepseek-chat` - DeepSeek Chat (default)
-- `deepseek-coder` - DeepSeek Coder
+Upload and manage files for fine-tuning, assistants, and more:
 
-#### Grok Models
-- `grok-4` - Grok 4 Chat (default)
-- `grok-2-image` - Grok 2 Image Generation
+```typescript
+import { ChatGPT } from '@joliegg/ai';
+import fs from 'fs';
 
+const chatGPT = new ChatGPT();
 
-### Engine-Specific Parameters
+// Upload a file
+const file = await chatGPT.uploadFile('./training-data.jsonl', {
+  purpose: 'fine-tune', // 'assistants', 'fine-tune', 'batch', 'vision'
+});
+console.log('Uploaded:', file.id, file.filename);
 
-**SD3 Engine Only:**
-- `cfgScale`: CFG scale for prompt adherence (range: 1-10)
-- `model`: Choose SD3.5 variant (`'sd3.5-large' | 'sd3.5-large-turbo' | 'sd3.5-medium'`)
+// Upload from buffer
+const buffer = fs.readFileSync('./data.jsonl');
+const file2 = await chatGPT.uploadFile(buffer, { purpose: 'fine-tune' });
 
-**All Engines:**
-- `prompt`, `aspectRatio`, `style`, `seed`, `negativePrompt`, `outputFormat`
+// List files
+const fileList = await chatGPT.listFiles('fine-tune');
+console.log(
+  'Files:',
+  fileList.files.map((f) => f.filename)
+);
 
-### Parameter Ranges
+// Get file content
+const content = await chatGPT.getFileContent(file.id);
+fs.writeFileSync('downloaded.jsonl', content);
 
-#### OpenAI
-- **n**: 1 to 10 images (DALL-E 3 limited to 1)
-- **maxTokens**: Maximum tokens for chat completions (default: 300)
+// Delete file
+const deleted = await chatGPT.deleteFile(file.id);
+console.log('Deleted:', deleted);
+```
 
-#### Grok
-- **n**: 1 to 10 images for image generation
-- **maxTokens**: Maximum tokens for chat completions (default: 300)
+## Model Listing
 
-#### Stability AI
-- **seed**: 0 to 4294967294 (omit for random)
-- **strength**: 0.0 to 1.0 (image-to-image only)
-- **cfgScale**: 1 to 10 (SD3 only)
+List available models from providers:
 
+```typescript
+import { ChatGPT } from '@joliegg/ai';
+
+const chatGPT = new ChatGPT();
+
+// List all models
+const models = await chatGPT.listModels();
+console.log('Available models:', models.models.length);
+
+for (const model of models.models) {
+  console.log(`- ${model.id}`);
+  console.log(`  Owner: ${model.ownedBy}`);
+  console.log(`  Capabilities:`, model.capabilities);
+}
+
+// Get specific model details
+const gpt4o = await chatGPT.getModel('gpt-4o');
+console.log('GPT-4o capabilities:', gpt4o.capabilities);
+// { chat: true, vision: true, functionCalling: true, ... }
+```
+
+## Token Counting
+
+Estimate token usage before sending requests:
+
+```typescript
+import { ChatGPT } from '@joliegg/ai';
+
+const chatGPT = new ChatGPT();
+
+const messages = [
+  { role: 'system', content: 'You are a helpful assistant.' },
+  { role: 'user', content: 'Write a long story about a magical kingdom.' },
+];
+
+// Estimate tokens
+const estimate = chatGPT.countTokens(messages, 'gpt-4o');
+console.log('Estimated tokens:', estimate.tokens);
+console.log('Breakdown:', estimate.breakdown);
+// { messages: 15, overhead: 3 }
+
+// Use for cost estimation or to check context limits
+if (estimate.tokens > 100000) {
+  console.log('Warning: Large request, consider summarizing');
+}
+```
+
+## Global Configuration
+
+Configure default settings for all providers:
+
+```typescript
+import { configure, getGlobalConfig } from '@joliegg/ai';
+
+// Set global defaults
+configure({
+  timeout: 30000, // 30 second timeout
+  maxRetries: 5, // Retry up to 5 times
+  retryDelay: 2000, // Start with 2 second delay
+  debug: true, // Enable debug logging
+});
+
+// Get current configuration
+const config = getGlobalConfig();
+console.log(config);
+
+// Provider-specific config overrides global
+const chatGPT = new ChatGPT('key', {
+  timeout: 60000, // Override for this instance
+  maxRetries: 3,
+});
+```
+
+## TypeScript Types
+
+All types are exported for TypeScript users:
+
+```typescript
+import type {
+  // Message types
+  Message,
+  MessageRole,
+  TextContent,
+  ImageContent,
+  AudioContent,
+  VideoContent,
+  DocumentContent,
+
+  // Tool types
+  ToolDefinition,
+  ToolCall,
+
+  // Response types
+  Response,
+  Chunk,
+  FinishReason,
+
+  // Options
+  CompletionOptions,
+  StreamOptions,
+  EmbeddingOptions,
+
+  // Audio types
+  TranscriptionOptions,
+  TranscriptionResponse,
+  TTSOptions,
+  TTSVoice,
+  TTSModel,
+
+  // Video types
+  VideoGenerationOptions,
+  VideoJob,
+  VideoResponse,
+
+  // Imagen types
+  ImagenOptions,
+  ImagenResponse,
+
+  // Realtime types
+  RealtimeSessionConfig,
+  RealtimeEvent,
+  RealtimeVoice,
+
+  // Moderation types
+  ModerationOptions,
+  ModerationResult,
+  ModerationCategory,
+
+  // File types
+  FileUploadOptions,
+  FileInfo,
+  FileListResponse,
+
+  // Model types
+  ModelInfo,
+  ModelListResponse,
+
+  // Batch types
+  BatchRequest,
+  BatchResponse,
+
+  // Conversation types
+  ConversationOptions,
+
+  // Token counting
+  TokenCountResult,
+
+  // Config
+  ProviderConfig,
+  GlobalConfig,
+
+  // Provider interfaces
+  AIProvider,
+} from '@joliegg/ai';
+```
+
+## Model Reference
+
+### Chat Models
+
+| Provider | Models                                                                              |
+| -------- | ----------------------------------------------------------------------------------- |
+| OpenAI   | `gpt-4o` (default), `gpt-4o-mini`, `gpt-4-turbo`, `gpt-3.5-turbo`                   |
+| Claude   | `claude-opus-4-20250514` (default), `claude-sonnet-4-0`, `claude-3-5-sonnet-latest` |
+| Gemini   | `gemini-2.5-pro` (default), `gemini-2.0-pro`, `gemini-1.5-pro`                      |
+| DeepSeek | `deepseek-chat` (default), `deepseek-coder`                                         |
+| Grok     | `grok-4` (default)                                                                  |
+| Mistral  | `mistral-large-latest` (default), `mistral-medium`, `mistral-small`                 |
+| Ollama   | `llama3.2` (default), any pulled model                                              |
+
+### Image Models
+
+| Provider  | Models                                                    |
+| --------- | --------------------------------------------------------- |
+| OpenAI    | `dall-e-3`, `dall-e-2`, `gpt-image-1`                     |
+| Grok      | `grok-2-image`                                            |
+| Stability | `ultra`, `core`, `sd3` engines                            |
+| Gemini    | `imagen-3.0-generate-001`, `imagen-3.0-fast-generate-001` |
+
+### Embedding Models
+
+| Provider | Models                                                       |
+| -------- | ------------------------------------------------------------ |
+| OpenAI   | `text-embedding-3-small` (default), `text-embedding-3-large` |
+| Gemini   | `text-embedding-004` (default)                               |
+| Mistral  | `mistral-embed` (default)                                    |
+| Ollama   | `nomic-embed-text` (default)                                 |
+
+### Audio Models
+
+| Provider | Type          | Models              |
+| -------- | ------------- | ------------------- |
+| OpenAI   | Transcription | `whisper-1`         |
+| OpenAI   | TTS           | `tts-1`, `tts-1-hd` |
+
+### Video Models
+
+| Provider | Models                           |
+| -------- | -------------------------------- |
+| OpenAI   | `sora-2` (default), `sora-2-pro` |
+
+## Environment Variables
+
+The library auto-detects API keys from these environment variables:
+
+| Provider | Environment Variable                                    |
+| -------- | ------------------------------------------------------- |
+| OpenAI   | `OPENAI_API_KEY`                                        |
+| Claude   | `ANTHROPIC_API_KEY` or `CLAUDE_API_KEY`                 |
+| Gemini   | `GOOGLE_API_KEY` or `GEMINI_API_KEY`                    |
+| DeepSeek | `DEEPSEEK_API_KEY`                                      |
+| Grok     | `GROK_API_KEY`                                          |
+| Mistral  | `MISTRAL_API_KEY`                                       |
+| Ollama   | `OLLAMA_HOST` (optional, defaults to `localhost:11434`) |
 
 ## License
 

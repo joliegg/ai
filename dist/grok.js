@@ -1,26 +1,21 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const openai_1 = __importDefault(require("openai"));
-class Grok {
-    _client;
-    constructor(apiKey) {
-        this._client = new openai_1.default({
-            apiKey,
-            baseURL: "https://api.x.ai/v1",
-            timeout: 360000,
-        });
+const base_openai_1 = require("./base-openai");
+const errors_1 = require("./errors");
+class Grok extends base_openai_1.BaseOpenAI {
+    _provider = 'grok';
+    constructor(apiKey, config = {}) {
+        const resolvedApiKey = apiKey || process.env.GROK_API_KEY;
+        super(resolvedApiKey, 'https://api.x.ai/v1', config);
     }
-    complete(messages, model = 'grok-4', maxTokens = 300) {
-        if (this._client instanceof openai_1.default === false) {
-            throw new Error('OpenAI client not initialized');
-        }
-        return this._client?.chat.completions.create({ model, messages, max_tokens: maxTokens });
+    get provider() {
+        return this._provider;
+    }
+    getDefaultModel() {
+        return 'grok-4';
     }
     /**
-     * Generate images using OpenAI's image generation models
+     * Generate images using Grok's image generation models
      *
      * @param options - Image generation options
      *
@@ -28,29 +23,12 @@ class Grok {
      *
      */
     async generate(options) {
-        const { prompt, n, model } = options;
-        if (this._client instanceof openai_1.default === false) {
-            throw new Error('OpenAI client not initialized');
-        }
+        const { n } = options;
         if (n > 10) {
-            throw new Error('Cannot generate more than 10 images at once.');
+            throw new errors_1.AIError('Cannot generate more than 10 images at once.', this._provider, 'INVALID_COUNT');
         }
-        const query = {
-            model,
-            prompt,
-            n,
-            response_format: 'b64_json'
-        };
-        const response = await this._client.images.generate(query);
-        if (!response.data) {
-            throw new Error('No image data received from Grok');
-        }
-        return response.data.map((image) => {
-            if (!image.b64_json) {
-                throw new Error('No base64 data received from Grok');
-            }
-            return Buffer.from(image.b64_json, 'base64');
-        });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return super.generate(options);
     }
 }
 exports.default = Grok;

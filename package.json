@@ -1,38 +1,43 @@
 {
   "name": "@joliegg/ai",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "A set of tools to integrate AI into chats",
   "author": "Diana Islas Ocampo",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "license": "HL3-CL",
   "scripts": {
-    "publish": "yarn build && yarn docs",
-    "build": "yarn eslint . && rm -rf ./dist && yarn tsc --declaration",
+    "publish": "bun run build && bun run docs",
+    "build": "eslint . && rm -rf ./dist && tsc",
     "test": "node ./test/index.js",
-    "docs": "typedoc"
+    "test:unit": "bun run build && node --test ./test/unit.test.js",
+    "docs": "typedoc",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "engines": {
     "node": ">=20.x"
   },
   "devDependencies": {
-    "@babel/eslint-parser": "^7.25.9",
-    "@eslint/js": "^9.13.0",
+    "@babel/eslint-parser": "^7.28.6",
+    "@eslint/js": "^9.39.2",
     "@types/ws": "^8.18.1",
-    "@typescript-eslint/eslint-plugin": "^8.11.0",
-    "@typescript-eslint/parser": "^8.11.0",
-    "dotenv": "^16.4.5",
-    "eslint": "^9.13.0",
-    "typedoc": "^0.26.10",
-    "typescript": "^5.6.3",
-    "typescript-eslint": "^8.11.0"
+    "@typescript-eslint/eslint-plugin": "^8.53.0",
+    "@typescript-eslint/parser": "^8.53.0",
+    "dotenv": "^17.2.3",
+    "eslint": "^9.39.2",
+    "prettier": "^3.8.0",
+    "typedoc": "^0.28.16",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.53.0"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.57.0",
-    "@google/generative-ai": "^0.21.0",
-    "axios": "^1.7.7",
-    "form-data": "^4.0.1",
-    "openai": "^4.68.4",
-    "ws": "^8.18.3"
+    "@anthropic-ai/sdk": "^0.71.2",
+    "@google/genai": "^1.0.0",
+    "axios": "^1.13.2",
+    "form-data": "^4.0.5",
+    "openai": "^6.16.0",
+    "ws": "^8.19.0"
   },
   "files": [
     "README.md",
@@ -40,6 +45,5 @@
     "package.json",
     "src/*",
     "dist/*"
-  ],
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+  ]
 }

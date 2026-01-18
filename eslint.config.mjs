@@ -1,4 +1,3 @@
-
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
@@ -7,14 +6,10 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   {
     rules: {
-      '@typescript-eslint/no-inferrable-types': 'off'
+      '@typescript-eslint/no-inferrable-types': 'off',
     },
   },
   {
-    ignores: [
-      'dist',
-      'docs',
-      'test'
-    ],
+    ignores: ['dist', 'docs', 'test'],
   }
 );

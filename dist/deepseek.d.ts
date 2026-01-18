@@ -1,8 +1,10 @@
-import { APIPromise } from 'openai/core.mjs';
-import { ChatCompletion, ChatCompletionMessageParam } from 'openai/resources/chat/index.mjs';
-declare class DeepSeek {
-    private _client;
-    constructor(apiKey: string);
-    complete(messages: ChatCompletionMessageParam[], model?: string, maxTokens?: number): APIPromise<ChatCompletion>;
+import { BaseOpenAI } from './base-openai';
+import { ProviderConfig } from './types';
+export type MODEL = 'deepseek-chat' | 'deepseek-reasoner' | 'deepseek-coder' | (string & {});
+declare class DeepSeek extends BaseOpenAI {
+    protected readonly _provider = "deepseek";
+    constructor(apiKey?: string, config?: Partial<ProviderConfig>);
+    get provider(): string;
+    protected getDefaultModel(): MODEL;
 }
 export default DeepSeek;

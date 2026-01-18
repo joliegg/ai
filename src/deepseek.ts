@@ -1,18 +1,23 @@
-import OpenAI from 'openai';
-import { APIPromise } from 'openai/core.mjs';
-import { ChatCompletion, ChatCompletionMessageParam } from 'openai/resources/chat/index.mjs';
+import { BaseOpenAI } from './base-openai';
+import { ProviderConfig } from './types';
 
-class DeepSeek {
-  private _client: OpenAI;
+export type MODEL = 'deepseek-chat' | 'deepseek-reasoner' | 'deepseek-coder' | (string & {});
 
-  constructor (apiKey: string) {
-    this._client = new OpenAI({ apiKey, baseURL: 'https://api.deepseek.com' });
+class DeepSeek extends BaseOpenAI {
+  protected readonly _provider = 'deepseek';
+
+  constructor(apiKey?: string, config: Partial<ProviderConfig> = {}) {
+    const resolvedApiKey = apiKey || process.env.DEEPSEEK_API_KEY;
+    super(resolvedApiKey, 'https://api.deepseek.com', config);
   }
 
-  complete (messages: ChatCompletionMessageParam[], model: string = 'deepseek-chat	', maxTokens: number = 300): APIPromise<ChatCompletion> {
-    return this._client.chat.completions.create({ model, messages, max_tokens: maxTokens });
+  get provider(): string {
+    return this._provider;
   }
 
+  protected defaultModel(): MODEL {
+    return 'deepseek-reasoner';
+  }
 }
 
 export default DeepSeek;

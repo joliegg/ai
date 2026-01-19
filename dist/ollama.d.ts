@@ -4,7 +4,7 @@ declare class Ollama extends BaseOpenAI {
     protected readonly _provider = "ollama";
     constructor(apiKey?: string, config?: Partial<ProviderConfig>);
     get provider(): string;
-    protected getDefaultModel(): string;
-    protected getDefaultEmbeddingModel(): string;
+    protected defaultModel(): string;
+    protected defaultEmbeddingModel(): string;
 }
 export default Ollama;

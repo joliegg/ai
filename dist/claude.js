@@ -153,9 +153,6 @@ class Claude {
             }
         }
     }
-    // ==========================================================================
-    // Private helper methods
-    // ==========================================================================
     convertToClaudeMessages(messages) {
         let systemPrompt;
         const claudeMessages = [];

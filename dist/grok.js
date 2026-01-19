@@ -11,7 +11,7 @@ class Grok extends base_openai_1.BaseOpenAI {
     get provider() {
         return this._provider;
     }
-    getDefaultModel() {
+    defaultModel() {
         return 'grok-4';
     }
     /**

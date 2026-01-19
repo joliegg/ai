@@ -11,10 +11,10 @@ class Ollama extends base_openai_1.BaseOpenAI {
     get provider() {
         return this._provider;
     }
-    getDefaultModel() {
+    defaultModel() {
         return 'llama3.2';
     }
-    getDefaultEmbeddingModel() {
+    defaultEmbeddingModel() {
         return 'nomic-embed-text';
     }
 }

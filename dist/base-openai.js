@@ -33,7 +33,7 @@ class BaseOpenAI {
         if (!this._client) {
             throw new errors_1.AIError('OpenAI client not initialized', this._provider);
         }
-        const model = options.model || this.getDefaultModel();
+        const model = options.model || this.defaultModel();
         const openAIMessages = this.convertToOpenAIMessages(messages);
         const fn = async () => {
             const params = {
@@ -76,7 +76,7 @@ class BaseOpenAI {
         if (!this._client) {
             throw new errors_1.AIError('OpenAI client not initialized', this._provider);
         }
-        const model = options.model || this.getDefaultModel();
+        const model = options.model || this.defaultModel();
         const openAIMessages = this.convertToOpenAIMessages(messages);
         const params = {
             model,
@@ -158,7 +158,7 @@ class BaseOpenAI {
         if (!this._client) {
             throw new errors_1.AIError('OpenAI client not initialized', this._provider);
         }
-        const model = options.model || this.getDefaultEmbeddingModel();
+        const model = options.model || this.defaultEmbeddingModel();
         const inputArray = Array.isArray(input) ? input : [input];
         const fn = async () => {
             const params = {
@@ -227,10 +227,10 @@ class BaseOpenAI {
             retryDelay: this._config.retryDelay,
         });
     }
-    getDefaultModel() {
+    defaultModel() {
         return 'gpt-4o';
     }
-    getDefaultEmbeddingModel() {
+    defaultEmbeddingModel() {
         return 'text-embedding-3-small';
     }
     convertToOpenAIMessages(messages) {

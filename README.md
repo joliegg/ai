@@ -775,7 +775,7 @@ const gemini = new Gemini();
 // Generate images
 const result = await gemini.generateImage({
   prompt: 'A serene mountain landscape at sunset with a reflective lake',
-  model: 'imagen-3.0-generate-001', // or 'imagen-3.0-fast-generate-001'
+  model: 'imagen-4.0-generate-001', // or 'imagen-3.0-fast-generate-001'
   numberOfImages: 2,
   aspectRatio: '16:9', // '1:1', '3:4', '4:3', '9:16', '16:9'
 });
@@ -1169,10 +1169,10 @@ import type {
 
 | Provider  | Models                                                    |
 | --------- | --------------------------------------------------------- |
-| OpenAI    | `dall-e-3`, `dall-e-2`, `gpt-image-1`                     |
+| OpenAI    | `dall-e-3`, `dall-e-2`, `gpt-image-1`, `gpt-image-1.5`    |
 | Grok      | `grok-2-image`                                            |
 | Stability | `ultra`, `core`, `sd3` engines                            |
-| Gemini    | `imagen-3.0-generate-001`, `imagen-3.0-fast-generate-001` |
+| Gemini    | `imagen-4.0-generate-001`, `imagen-4.0-fast-generate-001`, `imagen-4.0-ultra-generate-001`, `imagen-3.0-generate-001`, `imagen-3.0-fast-generate-001` |
 
 ### Embedding Models
 

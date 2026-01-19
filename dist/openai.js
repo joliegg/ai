@@ -62,7 +62,7 @@ class ChatGPT extends base_openai_1.BaseOpenAI {
         if (!this._client) {
             throw new errors_1.AIError('OpenAI client not initialized', this._provider);
         }
-        if (model === 'gpt-image-1') {
+        if (model === 'gpt-image-1' || model === 'gpt-image-1.5') {
             if (ALLOWED_SIZES_GPT_IMAGE_1.includes(size) === false) {
                 throw new errors_1.AIError(`Size must be one of ${ALLOWED_SIZES_GPT_IMAGE_1.join(', ')}`, this._provider, 'INVALID_SIZE');
             }
@@ -107,9 +107,6 @@ class ChatGPT extends base_openai_1.BaseOpenAI {
         }
         return new RealtimeSession(this._client.apiKey, config);
     }
-    // ===========================================================================
-    // Audio: Transcription (Whisper)
-    // ===========================================================================
     /**
      * Transcribe audio to text using Whisper
      *
@@ -154,9 +151,6 @@ class ChatGPT extends base_openai_1.BaseOpenAI {
             provider: this._provider,
         };
     }
-    // ===========================================================================
-    // Audio: Text-to-Speech
-    // ===========================================================================
     /**
      * Convert text to speech
      *
@@ -178,9 +172,6 @@ class ChatGPT extends base_openai_1.BaseOpenAI {
         const arrayBuffer = await response.arrayBuffer();
         return Buffer.from(arrayBuffer);
     }
-    // ===========================================================================
-    // Content Moderation
-    // ===========================================================================
     /**
      * Check content for policy violations
      *
@@ -220,9 +211,6 @@ class ChatGPT extends base_openai_1.BaseOpenAI {
             };
         });
     }
-    // ===========================================================================
-    // File Management
-    // ===========================================================================
     /**
      * Upload a file
      *
@@ -292,9 +280,6 @@ class ChatGPT extends base_openai_1.BaseOpenAI {
         const arrayBuffer = await response.arrayBuffer();
         return Buffer.from(arrayBuffer);
     }
-    // ===========================================================================
-    // Model Listing
-    // ===========================================================================
     /**
      * List available models
      */
@@ -345,9 +330,6 @@ class ChatGPT extends base_openai_1.BaseOpenAI {
             functionCalling: id.includes('gpt-4') || id.includes('gpt-3.5-turbo') || id.includes('o3'),
         };
     }
-    // ===========================================================================
-    // Batch Processing
-    // ===========================================================================
     /**
      * Process multiple completion requests in parallel
      *
@@ -378,9 +360,6 @@ class ChatGPT extends base_openai_1.BaseOpenAI {
         }
         return results;
     }
-    // ===========================================================================
-    // Token Counting
-    // ===========================================================================
     /**
      * Estimate token count for messages
      *
@@ -423,9 +402,6 @@ class ChatGPT extends base_openai_1.BaseOpenAI {
             },
         };
     }
-    // ===========================================================================
-    // Conversation Manager
-    // ===========================================================================
     /**
      * Create a conversation manager for multi-turn chat
      *
@@ -594,7 +570,7 @@ class ChatGPT extends base_openai_1.BaseOpenAI {
         }
         return this.downloadVideo(video.videoUrl);
     }
-    getDefaultModel() {
+    defaultModel() {
         return 'gpt-5.2';
     }
 }
@@ -642,11 +618,11 @@ class RealtimeSession {
                         output_audio_format: this.config.outputAudioFormat,
                         input_audio_transcription: this.config.inputAudioTranscription,
                         turn_detection: this.config.turnDetection,
-                        tools: this.config.tools?.map((t) => ({
+                        tools: this.config.tools?.map((tool) => ({
                             type: 'function',
-                            name: t.name,
-                            description: t.description,
-                            parameters: t.parameters,
+                            name: tool.name,
+                            description: tool.description,
+                            parameters: tool.parameters,
                         })),
                         temperature: this.config.temperature,
                         max_response_output_tokens: this.config.maxOutputTokens,

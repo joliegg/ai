@@ -43,7 +43,8 @@ export type MODEL =
   | 'claude-opus-4-1-20250805'
   | 'claude-3-opus-latest'
   | 'claude-3-opus-20240229'
-  | 'claude-3-haiku-20240307';
+  | 'claude-3-haiku-20240307'
+  | (string & {});
 
 class Claude {
   private _client?: Anthropic;
@@ -104,6 +105,7 @@ class Claude {
           type: 'enabled',
           budget_tokens: options.reasoning.budget,
         };
+
         // Ensure max_tokens is set higher than budget if using thinking
         if (!options.maxTokens || options.maxTokens <= options.reasoning.budget) {
           params.max_tokens = options.reasoning.budget + 4096; // Add buffer
@@ -124,6 +126,7 @@ class Claude {
       }
 
       const response = await this._client!.messages.create(params);
+
       return this.convertFromClaudeResponse(response, model);
     };
 

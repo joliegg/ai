@@ -274,10 +274,6 @@ class Gemini {
     });
   }
 
-  // ===========================================================================
-  // Imagen - Image Generation
-  // ===========================================================================
-
   /**
    * Generate images using Imagen
    *
@@ -285,7 +281,7 @@ class Gemini {
    * @returns Generated images as buffers
    */
   async generateImage(options: ImagenOptions): Promise<ImagenResponse> {
-    const model = options.model || 'imagen-3.0-generate-001';
+    const model = options.model || 'imagen-4.0-generate-001';
 
     const fn = async (): Promise<ImagenResponse> => {
       // Build the config

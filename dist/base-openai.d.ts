@@ -27,8 +27,8 @@ export declare abstract class BaseOpenAI {
         format?: string;
         background?: string;
     }): Promise<Buffer[]>;
-    protected getDefaultModel(): string;
-    protected getDefaultEmbeddingModel(): string;
+    protected defaultModel(): string;
+    protected defaultEmbeddingModel(): string;
     protected convertToOpenAIMessages(messages: Message[]): ChatCompletionMessageParam[];
     protected convertToOpenAITools(tools: ToolDefinition[]): OpenAI.Chat.Completions.ChatCompletionTool[];
     protected convertToolChoice(choice: 'auto' | 'none' | 'required' | {

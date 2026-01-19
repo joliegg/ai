@@ -11,7 +11,7 @@ declare class Grok extends BaseOpenAI {
     protected readonly _provider = "grok";
     constructor(apiKey?: string, config?: Partial<ProviderConfig>);
     get provider(): string;
-    protected getDefaultModel(): string;
+    protected defaultModel(): string;
     /**
      * Generate images using Grok's image generation models
      *

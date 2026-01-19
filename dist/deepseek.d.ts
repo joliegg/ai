@@ -5,6 +5,6 @@ declare class DeepSeek extends BaseOpenAI {
     protected readonly _provider = "deepseek";
     constructor(apiKey?: string, config?: Partial<ProviderConfig>);
     get provider(): string;
-    protected getDefaultModel(): MODEL;
+    protected defaultModel(): MODEL;
 }
 export default DeepSeek;

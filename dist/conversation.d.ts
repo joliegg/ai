@@ -1,11 +1,4 @@
-/**
- * Conversation Manager - Handles chat history and context
- */
 import { Message, Response, Chunk, CompletionOptions, StreamOptions, ConversationOptions, AIProvider } from './types';
-/**
- * Conversation manager that maintains chat history and provides
- * convenient methods for multi-turn conversations
- */
 export declare class Conversation {
     private provider;
     private options;
@@ -59,4 +52,4 @@ export declare class Conversation {
 /**
  * Create a conversation manager for any AI provider
  */
-export declare function createConversation(provider: AIProvider, options?: ConversationOptions): Conversation;
+export declare const createConversation: (provider: AIProvider, options?: ConversationOptions) => Conversation;

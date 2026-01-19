@@ -61,9 +61,6 @@ exports.assistantMessage = assistantMessage;
 exports.createMessageBuilder = createMessageBuilder;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
-// =============================================================================
-// Vision/Multimodal Helpers
-// =============================================================================
 /**
  * Create an image content block from a base64 string
  */
@@ -133,9 +130,6 @@ function text(content) {
 function withImages(textContent, ...images) {
     return [text(textContent), ...images];
 }
-// =============================================================================
-// Audio Helpers
-// =============================================================================
 /**
  * Create an audio content block from a base64 string
  */
@@ -197,9 +191,6 @@ function audioFromFile(filePath) {
 function withAudio(textContent, ...audio) {
     return [text(textContent), ...audio];
 }
-// =============================================================================
-// Video Helpers
-// =============================================================================
 /**
  * Create a video content block from a base64 string
  */
@@ -260,9 +251,6 @@ function videoFromFile(filePath) {
 function withVideo(textContent, ...videos) {
     return [text(textContent), ...videos];
 }
-// =============================================================================
-// Document/PDF Helpers
-// =============================================================================
 /**
  * Create a document content block from a base64 string
  */
@@ -358,9 +346,6 @@ function assistantMessage(content) {
         content,
     };
 }
-// =============================================================================
-// Conversation Builder
-// =============================================================================
 /**
  * Builder class for constructing conversations with multimodal content
  */

@@ -1,14 +1,6 @@
 "use strict";
-/**
- * Conversation Manager - Handles chat history and context
- */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Conversation = void 0;
-exports.createConversation = createConversation;
-/**
- * Conversation manager that maintains chat history and provides
- * convenient methods for multi-turn conversations
- */
+exports.createConversation = exports.Conversation = void 0;
 class Conversation {
     provider;
     options;
@@ -210,6 +202,7 @@ exports.Conversation = Conversation;
 /**
  * Create a conversation manager for any AI provider
  */
-function createConversation(provider, options = {}) {
+const createConversation = (provider, options = {}) => {
     return new Conversation(provider, options);
-}
+};
+exports.createConversation = createConversation;

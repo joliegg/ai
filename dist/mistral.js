@@ -10,10 +10,10 @@ class Mistral extends base_openai_1.BaseOpenAI {
     get provider() {
         return this._provider;
     }
-    getDefaultModel() {
+    defaultModel() {
         return 'mistral-large-latest';
     }
-    getDefaultEmbeddingModel() {
+    defaultEmbeddingModel() {
         return 'mistral-embed';
     }
 }

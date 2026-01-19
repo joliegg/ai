@@ -216,9 +216,6 @@ class Gemini {
             retryDelay: this._config.retryDelay,
         });
     }
-    // ===========================================================================
-    // Imagen - Image Generation
-    // ===========================================================================
     /**
      * Generate images using Imagen
      *
@@ -226,7 +223,7 @@ class Gemini {
      * @returns Generated images as buffers
      */
     async generateImage(options) {
-        const model = options.model || 'imagen-3.0-generate-001';
+        const model = options.model || 'imagen-4.0-generate-001';
         const fn = async () => {
             // Build the config
             const config = {
@@ -270,9 +267,6 @@ class Gemini {
             retryDelay: this._config.retryDelay,
         });
     }
-    // ==========================================================================
-    // Private helper methods
-    // ==========================================================================
     convertToGeminiMessages(messages) {
         let systemInstruction;
         const contents = [];

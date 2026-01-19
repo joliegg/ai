@@ -142,7 +142,7 @@ declare class ChatGPT extends BaseOpenAI {
      * @returns Video buffer
      */
     generateVideoBuffer(options: VideoGenerationOptions, pollInterval?: number, timeout?: number): Promise<Buffer>;
-    protected getDefaultModel(): string;
+    protected defaultModel(): string;
 }
 /**
  * RealtimeSession - Manages bidirectional audio streaming with OpenAI

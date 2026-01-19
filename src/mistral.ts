@@ -22,8 +22,6 @@ class Mistral extends BaseOpenAI {
   protected defaultEmbeddingModel(): string {
     return 'mistral-embed';
   }
-
-
 }
 
 export default Mistral;

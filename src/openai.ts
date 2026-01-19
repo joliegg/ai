@@ -76,7 +76,7 @@ class ChatGPT extends BaseOpenAI {
       throw new AIError('OpenAI client not initialized', this._provider);
     }
 
-    if (model === 'gpt-image-1') {
+    if (model === 'gpt-image-1' || model === 'gpt-image-1.5') {
       if (ALLOWED_SIZES_GPT_IMAGE_1.includes(size) === false) {
         throw new AIError(
           `Size must be one of ${ALLOWED_SIZES_GPT_IMAGE_1.join(', ')}`,
@@ -759,11 +759,11 @@ export class RealtimeSession {
             output_audio_format: this.config.outputAudioFormat,
             input_audio_transcription: this.config.inputAudioTranscription,
             turn_detection: this.config.turnDetection,
-            tools: this.config.tools?.map((t) => ({
+            tools: this.config.tools?.map((tool) => ({
               type: 'function',
-              name: t.name,
-              description: t.description,
-              parameters: t.parameters,
+              name: tool.name,
+              description: tool.description,
+              parameters: tool.parameters,
             })),
             temperature: this.config.temperature,
             max_response_output_tokens: this.config.maxOutputTokens,
@@ -800,6 +800,7 @@ export class RealtimeSession {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       throw new Error('WebSocket is not connected');
     }
+
     this.ws.send(JSON.stringify(event));
   }
 
@@ -808,6 +809,7 @@ export class RealtimeSession {
    */
   sendAudio(audioData: Buffer | string): void {
     const base64 = Buffer.isBuffer(audioData) ? audioData.toString('base64') : audioData;
+
     this.send({
       type: 'input_audio_buffer.append',
       audio: base64,

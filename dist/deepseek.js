@@ -10,7 +10,7 @@ class DeepSeek extends base_openai_1.BaseOpenAI {
     get provider() {
         return this._provider;
     }
-    getDefaultModel() {
+    defaultModel() {
         return 'deepseek-reasoner';
     }
 }

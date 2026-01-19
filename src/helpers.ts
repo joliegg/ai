@@ -10,10 +10,6 @@ import {
 import * as fs from 'fs';
 import * as path from 'path';
 
-// =============================================================================
-// Vision/Multimodal Helpers
-// =============================================================================
-
 /**
  * Create an image content block from a base64 string
  */
@@ -92,10 +88,6 @@ export function withImages(textContent: string, ...images: ImageContent[]): Mess
   return [text(textContent), ...images];
 }
 
-// =============================================================================
-// Audio Helpers
-// =============================================================================
-
 /**
  * Create an audio content block from a base64 string
  */
@@ -165,10 +157,6 @@ export function withAudio(textContent: string, ...audio: AudioContent[]): Messag
   return [text(textContent), ...audio];
 }
 
-// =============================================================================
-// Video Helpers
-// =============================================================================
-
 /**
  * Create a video content block from a base64 string
  */
@@ -236,10 +224,6 @@ export function videoFromFile(filePath: string): VideoContent {
 export function withVideo(textContent: string, ...videos: VideoContent[]): MessageContent[] {
   return [text(textContent), ...videos];
 }
-
-// =============================================================================
-// Document/PDF Helpers
-// =============================================================================
 
 /**
  * Create a document content block from a base64 string
@@ -354,10 +338,6 @@ export function assistantMessage(content: string): Message {
     content,
   };
 }
-
-// =============================================================================
-// Conversation Builder
-// =============================================================================
 
 /**
  * Builder class for constructing conversations with multimodal content

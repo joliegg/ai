@@ -32,7 +32,7 @@ class Gemini {
      * Generate a chat completion
      */
     async complete(messages, options = {}) {
-        const model = options.model || 'gemini-3.0-pro';
+        const model = options.model || 'gemini-2.5-pro';
         const { systemInstruction, contents } = this.convertToGeminiMessages(messages);
         const fn = async () => {
             const config = {};
@@ -96,7 +96,7 @@ class Gemini {
      * Stream completions
      */
     async *stream(messages, options = {}) {
-        const model = options.model || 'gemini-3.0-pro';
+        const model = options.model || 'gemini-2.5-pro';
         const { systemInstruction, contents } = this.convertToGeminiMessages(messages);
         const config = {};
         if (options.maxTokens)
@@ -191,20 +191,17 @@ class Gemini {
      * Generate embeddings
      */
     async embed(input, options = {}) {
-        const model = options.model || 'text-embedding-004';
+        const model = options.model || 'gemini-embedding-001';
         const inputArray = Array.isArray(input) ? input : [input];
         const fn = async () => {
-            const embeddings = [];
-            // Gemini requires individual embedding requests
-            for (const text of inputArray) {
-                const result = await this._client.models.embedContent({
-                    model,
-                    contents: text,
-                });
-                if (result.embeddings && result.embeddings.length > 0) {
-                    embeddings.push(result.embeddings[0].values || []);
-                }
-            }
+            // Parallelize individual embedding requests
+            const results = await Promise.all(inputArray.map((text) => this._client.models.embedContent({
+                model,
+                contents: text,
+            })));
+            const embeddings = results
+                .filter((result) => result.embeddings && result.embeddings.length > 0)
+                .map((result) => result.embeddings[0].values || []);
             return {
                 embeddings,
                 model,
@@ -223,7 +220,7 @@ class Gemini {
      * @returns Generated images as buffers
      */
     async generateImage(options) {
-        const model = options.model || 'imagen-4.0-generate-001';
+        const model = options.model || 'imagen-4.0-generate-preview-06-06';
         const fn = async () => {
             // Build the config
             const config = {
@@ -338,7 +335,7 @@ class Gemini {
                     else if (part.type === 'tool_result') {
                         parts.push({
                             functionResponse: {
-                                name: part.toolUseId, // Gemini uses name for function responses
+                                name: part.name || part.toolUseId,
                                 response: { result: part.content },
                             },
                         });
@@ -353,7 +350,7 @@ class Gemini {
                 else if (content.type === 'tool_result') {
                     parts.push({
                         functionResponse: {
-                            name: content.toolUseId,
+                            name: content.name || content.toolUseId,
                             response: { result: content.content },
                         },
                     });

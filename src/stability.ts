@@ -1,5 +1,6 @@
-import axios from 'axios';
-import FormData from 'form-data';
+import { ProviderConfig, getGlobalConfig } from './types';
+import { AIError } from './errors';
+import { withRetry, withTimeout } from './utils';
 
 export type Style =
   | '3d-model'
@@ -55,10 +56,20 @@ export interface DreamResponse {
 class Dream {
   private _apiKey?: string;
   private _engine?: Engine;
+  private _config: ProviderConfig;
+  private readonly _provider = 'stability';
 
-  constructor(apiKey: string, engine: Engine = 'ultra') {
+  constructor(apiKey: string, engine: Engine = 'ultra', config: Partial<ProviderConfig> = {}) {
     this._apiKey = apiKey;
     this._engine = engine;
+
+    this._config = {
+      apiKey,
+      timeout: config.timeout ?? getGlobalConfig().timeout,
+      maxRetries: config.maxRetries ?? getGlobalConfig().maxRetries,
+      retryDelay: config.retryDelay ?? getGlobalConfig().retryDelay,
+      debug: config.debug ?? getGlobalConfig().debug,
+    };
   }
 
   /**
@@ -115,20 +126,39 @@ class Dream {
       }
     }
 
-    const { data } = await axios.post(
-      `https://api.stability.ai/v2beta/stable-image/generate/${this._engine}`,
-      formData,
-      {
-        headers: {
-          Authorization: `Bearer ${this._apiKey}`,
-          Accept: 'image/*',
-          ...formData.getHeaders(),
-        },
-        responseType: 'arraybuffer',
-      }
-    );
+    const fn = async (): Promise<Buffer> => {
+      const response = await fetch(
+        `https://api.stability.ai/v2beta/stable-image/generate/${this._engine}`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this._apiKey}`,
+            Accept: 'image/*',
+          },
+          body: formData,
+        }
+      );
 
-    return Buffer.from(data);
+      if (!response.ok) {
+        const errorBody = await response.text().catch(() => '');
+        throw new AIError(
+          `Stability API error: ${response.status} ${errorBody}`,
+          this._provider,
+          undefined,
+          response.status
+        );
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      return Buffer.from(arrayBuffer);
+    };
+
+    const timeout = this._config.timeout ?? 60000;
+
+    return withRetry(() => withTimeout(fn, timeout, this._provider), this._provider, {
+      maxRetries: this._config.maxRetries,
+      retryDelay: this._config.retryDelay,
+    });
   }
 
   /**
@@ -155,7 +185,7 @@ class Dream {
     const formData = new FormData();
 
     formData.append('prompt', prompt);
-    formData.append('image', image, { filename: 'input_image.png', contentType: 'image/png' });
+    formData.append('image', new Blob([image], { type: 'image/png' }), 'input_image.png');
 
     if (typeof strength === 'number') {
       formData.append('strength', strength.toString());
@@ -194,20 +224,39 @@ class Dream {
       }
     }
 
-    const { data } = await axios.post(
-      `https://api.stability.ai/v2beta/stable-image/generate/${this._engine}`,
-      formData,
-      {
-        headers: {
-          Authorization: `Bearer ${this._apiKey}`,
-          Accept: 'image/*',
-          ...formData.getHeaders(),
-        },
-        responseType: 'arraybuffer',
-      }
-    );
+    const fn = async (): Promise<Buffer> => {
+      const response = await fetch(
+        `https://api.stability.ai/v2beta/stable-image/generate/${this._engine}`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this._apiKey}`,
+            Accept: 'image/*',
+          },
+          body: formData,
+        }
+      );
 
-    return Buffer.from(data);
+      if (!response.ok) {
+        const errorBody = await response.text().catch(() => '');
+        throw new AIError(
+          `Stability API error: ${response.status} ${errorBody}`,
+          this._provider,
+          undefined,
+          response.status
+        );
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      return Buffer.from(arrayBuffer);
+    };
+
+    const timeout = this._config.timeout ?? 60000;
+
+    return withRetry(() => withTimeout(fn, timeout, this._provider), this._provider, {
+      maxRetries: this._config.maxRetries,
+      retryDelay: this._config.retryDelay,
+    });
   }
 }
 

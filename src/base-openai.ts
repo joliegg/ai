@@ -24,8 +24,12 @@ export abstract class BaseOpenAI {
   protected _config: ProviderConfig;
   protected abstract readonly _provider: string;
 
+  get provider(): string {
+    return this._provider;
+  }
+
   constructor(apiKey?: string, baseURL?: string, config: Partial<ProviderConfig> = {}) {
-    const resolvedApiKey = apiKey || process.env.OPENAI_API_KEY;
+    const resolvedApiKey = apiKey;
 
     this._config = {
       apiKey: resolvedApiKey,
@@ -77,7 +81,7 @@ export abstract class BaseOpenAI {
       }
 
       // Add reasoning effort for o-series models
-      if (options.reasoning?.effort && (model.startsWith('o1') || model.startsWith('o3'))) {
+      if (options.reasoning?.effort && (model.startsWith('o1') || model.startsWith('o3') || model.startsWith('o4'))) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (params as any).reasoning_effort = options.reasoning.effort;
       }
@@ -161,7 +165,7 @@ export abstract class BaseOpenAI {
           toolCalls: delta?.tool_calls?.map((tc) => ({
             id: tc.id,
             name: tc.function?.name,
-            arguments: tc.function?.arguments ? JSON.parse(tc.function.arguments) : undefined,
+            arguments: undefined,
           })),
         },
         finishReason: finishReason ? this.mapFinishReason(finishReason) : undefined,
@@ -256,11 +260,11 @@ export abstract class BaseOpenAI {
     if (size) query.size = size as ImageGenerateParams['size'];
     if (quality) query.quality = quality as ImageGenerateParams['quality'];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (format && model === 'gpt-image-1') (query as any).output_format = format;
+    if (format && (model === 'gpt-image-1' || model === 'gpt-image-1.5')) (query as any).output_format = format;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (background && model === 'gpt-image-1') (query as any).background = background;
+    if (background && (model === 'gpt-image-1' || model === 'gpt-image-1.5')) (query as any).background = background;
 
-    if (model !== 'gpt-image-1') {
+    if (model !== 'gpt-image-1' && model !== 'gpt-image-1.5') {
       query.response_format = 'b64_json';
     }
 
@@ -399,14 +403,11 @@ export abstract class BaseOpenAI {
   protected convertFromOpenAIResponse(response: ChatCompletion): Response {
     const choice = response.choices[0];
     const toolCalls = choice.message.tool_calls?.map((tc): ToolCall => {
-      // Handle both standard and custom tool call formats
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const tcAny = tc as any;
-      const funcData = tcAny.function || tcAny;
+      const func = 'function' in tc ? tc.function : undefined;
       return {
         id: tc.id,
-        name: funcData.name,
-        arguments: JSON.parse(funcData.arguments),
+        name: func?.name ?? '',
+        arguments: func?.arguments ? JSON.parse(func.arguments) : {},
       };
     });
 

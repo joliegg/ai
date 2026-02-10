@@ -7,11 +7,11 @@ class DeepSeek extends base_openai_1.BaseOpenAI {
         const resolvedApiKey = apiKey || process.env.DEEPSEEK_API_KEY;
         super(resolvedApiKey, 'https://api.deepseek.com', config);
     }
-    get provider() {
-        return this._provider;
-    }
     defaultModel() {
         return 'deepseek-reasoner';
+    }
+    defaultEmbeddingModel() {
+        return 'deepseek-embedding-v2';
     }
 }
 exports.default = DeepSeek;

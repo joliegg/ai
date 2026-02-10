@@ -6,8 +6,10 @@ import Grok from './grok';
 import Claude from './claude';
 import Mistral from './mistral';
 import Ollama from './ollama';
+import Qwen from './qwen';
+import Kimi from './kimi';
 
-export { ChatGPT, Dream, DeepSeek, Gemini, Grok, Claude, Mistral, Ollama, RealtimeSession };
+export { ChatGPT, Dream, DeepSeek, Gemini, Grok, Claude, Mistral, Ollama, Qwen, Kimi, RealtimeSession };
 
 export { Conversation, createConversation } from './conversation';
 
@@ -107,6 +109,12 @@ export type {
 
   // Conversation types
   ConversationOptions,
+  ConversationJSON,
+  SendContent,
+  ToolHandler,
+  ToolLoopOptions,
+  ConversationSendOptions,
+  ConversationStreamOptions,
 
   // Token counting types
   TokenCountResult,
@@ -162,6 +170,8 @@ export { withRetry, withTimeout, sleep, calculateBackoff, generateId } from './u
 
 // OpenAI types
 export type {
+  MODEL as OpenAIModel,
+  EMBEDDING_MODEL as OpenAIEmbeddingModel,
   Size as OpenAISize,
   Quality as OpenAIQuality,
   OutputFormat as OpenAIOutputFormat,
@@ -172,10 +182,29 @@ export type {
 
 // Grok types
 export type {
+  MODEL as GrokModel,
   OutputFormat as GrokOutputFormat,
   ImageGenerationModel as GrokImageModel,
+  VideoGenerationModel as GrokVideoModel,
   GenerateOptions as GrokGenerateOptions,
+  GrokVideoAspectRatio,
+  GrokVideoResolution,
+  GrokVideoGenerationOptions,
+  GrokVideoJob,
+  GrokVideoResponse,
 } from './grok';
+
+// Mistral types
+export type { MODEL as MistralModel, EMBEDDING_MODEL as MistralEmbeddingModel } from './mistral';
+
+// Gemini types
+export type { MODEL as GeminiModel, EMBEDDING_MODEL as GeminiEmbeddingModel } from './gemini';
+
+// Ollama types
+export type { MODEL as OllamaModel, EMBEDDING_MODEL as OllamaEmbeddingModel } from './ollama';
+
+// DeepSeek types
+export type { MODEL as DeepSeekModel, EMBEDDING_MODEL as DeepSeekEmbeddingModel } from './deepseek';
 
 // Stability types
 export type {
@@ -191,3 +220,9 @@ export type {
 
 // Claude types
 export type { MODEL as ClaudeModel } from './claude';
+
+// Qwen types
+export type { MODEL as QwenModel, EMBEDDING_MODEL as QwenEmbeddingModel } from './qwen';
+
+// Kimi types
+export type { MODEL as KimiModel } from './kimi';

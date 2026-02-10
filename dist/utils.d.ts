@@ -8,7 +8,6 @@ export interface RetryOptions {
 export declare const sleep: (ms: number) => Promise<void>;
 export declare const calculateBackoff: (attempt: number, baseDelay: number, maxDelay?: number) => number;
 export declare function withRetry<T>(fn: () => Promise<T>, provider: string, options?: RetryOptions): Promise<T>;
-export declare function createTimeout(ms: number, provider: string): Promise<never>;
 /**
  * Execute a function with a timeout
  */

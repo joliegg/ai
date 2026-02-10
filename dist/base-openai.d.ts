@@ -5,6 +5,7 @@ export declare abstract class BaseOpenAI {
     protected _client?: OpenAI;
     protected _config: ProviderConfig;
     protected abstract readonly _provider: string;
+    get provider(): string;
     constructor(apiKey?: string, baseURL?: string, config?: Partial<ProviderConfig>);
     complete(messages: Message[], options?: CompletionOptions): Promise<Response>;
     /**

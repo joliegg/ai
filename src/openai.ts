@@ -43,7 +43,10 @@ export type Quality = 'auto' | 'low' | 'medium' | 'high' | 'standard' | 'hd';
 export type OutputFormat = 'png' | 'jpeg' | 'webp';
 export type Background = 'transparent' | 'opaque' | 'auto';
 
-export type ImageGenerationModel = 'gpt-image-1.5' | 'gpt-image-1' | 'dall-e-3' | 'dall-e-2';
+export type MODEL = 'gpt-5.2' | 'gpt-5.1' | 'gpt-5' | 'gpt-5-mini' | 'gpt-5-nano' | 'gpt-5.2-pro' | 'gpt-5-pro' | 'o3' | 'o3-mini' | 'o3-pro' | 'o4-mini' | 'o1' | 'o1-pro' | 'gpt-4.1' | 'gpt-4.1-mini' | 'gpt-4.1-nano' | 'gpt-4o' | 'gpt-4o-mini' | (string & {});
+export type EMBEDDING_MODEL = 'text-embedding-3-large' | 'text-embedding-3-small' | 'text-embedding-ada-002' | (string & {});
+
+export type ImageGenerationModel = 'gpt-image-1.5' | 'chatgpt-image-latest' | 'gpt-image-1' | 'gpt-image-1-mini' | 'dall-e-3' | 'dall-e-2';
 
 export interface GenerateOptions {
   prompt: string;
@@ -62,12 +65,6 @@ class ChatGPT extends BaseOpenAI {
     const resolvedApiKey = apiKey || process.env.OPENAI_API_KEY;
     super(resolvedApiKey, undefined, config);
   }
-
-  get provider(): string {
-    return this._provider;
-  }
-
-
 
   async generate(options: GenerateOptions): Promise<Buffer[]> {
     const { n, size, model, quality } = options;
@@ -398,9 +395,9 @@ class ChatGPT extends BaseOpenAI {
       completion: id.includes('gpt-3.5') || id.includes('davinci'),
       embedding: id.includes('embedding'),
       image: id.includes('dall-e') || id.includes('gpt-image'),
-      audio: id.includes('whisper') || id.includes('tts'),
-      vision: id.includes('gpt-4') || id.includes('gpt-5.2') || id.includes('o1') || id.includes('o3'),
-      functionCalling: id.includes('gpt-4') || id.includes('gpt-3.5-turbo') || id.includes('o3'),
+      audio: id.includes('whisper') || id.includes('tts') || id.includes('transcribe'),
+      vision: id.includes('gpt-4') || id.includes('gpt-5') || id.includes('o1') || id.includes('o3') || id.includes('o4'),
+      functionCalling: id.includes('gpt-4') || id.includes('gpt-5') || id.includes('gpt-3.5-turbo') || id.includes('o3') || id.includes('o4'),
     };
   }
 
@@ -705,7 +702,7 @@ class ChatGPT extends BaseOpenAI {
     return this.downloadVideo(video.videoUrl);
   }
 
-  protected defaultModel(): string {
+  protected defaultModel(): MODEL {
     return 'gpt-5.2';
   }
 }
@@ -726,7 +723,7 @@ export class RealtimeSession {
   constructor(apiKey: string, config: RealtimeSessionConfig = {}) {
     this.apiKey = apiKey;
     this.config = {
-      model: config.model || 'gpt-4o-realtime-preview',
+      model: config.model || 'gpt-realtime',
       voice: config.voice || 'alloy',
       inputAudioFormat: config.inputAudioFormat || 'pcm16',
       outputAudioFormat: config.outputAudioFormat || 'pcm16',
@@ -777,8 +774,8 @@ export class RealtimeSession {
           const event = JSON.parse(data.toString()) as RealtimeEvent;
           this.emit(event.type, event);
           this.emit('*', event); // Wildcard handler
-        } catch {
-          // Ignore parse errors
+        } catch (err) {
+          this.emit('error', { type: 'error', error: err });
         }
       });
 

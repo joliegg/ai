@@ -1,13 +1,13 @@
 {
   "name": "@joliegg/ai",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "A set of tools to integrate AI into chats",
   "author": "Diana Islas Ocampo",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "license": "HL3-CL",
   "scripts": {
-    "publish": "bun run build && bun run docs",
+    "prepublishOnly": "bun run build && bun run docs",
     "build": "eslint . && rm -rf ./dist && tsc",
     "test": "node ./test/index.js",
     "test:unit": "bun run build && node --test ./test/unit.test.js",
@@ -22,21 +22,19 @@
     "@babel/eslint-parser": "^7.28.6",
     "@eslint/js": "^9.39.2",
     "@types/ws": "^8.18.1",
-    "@typescript-eslint/eslint-plugin": "^8.53.0",
-    "@typescript-eslint/parser": "^8.53.0",
-    "dotenv": "^17.2.3",
+    "@typescript-eslint/eslint-plugin": "^8.54.0",
+    "@typescript-eslint/parser": "^8.54.0",
+    "dotenv": "^17.2.4",
     "eslint": "^9.39.2",
-    "prettier": "^3.8.0",
+    "prettier": "^3.8.1",
     "typedoc": "^0.28.16",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.53.0"
+    "typescript-eslint": "^8.54.0"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
-    "@google/genai": "^1.0.0",
-    "axios": "^1.13.2",
-    "form-data": "^4.0.5",
-    "openai": "^6.16.0",
+    "@google/genai": "^1.40.0",
+    "openai": "^6.18.0",
     "ws": "^8.19.0"
   },
   "files": [

@@ -7,9 +7,6 @@ class Mistral extends base_openai_1.BaseOpenAI {
         const resolvedApiKey = apiKey || process.env.MISTRAL_API_KEY;
         super(resolvedApiKey, 'https://api.mistral.ai/v1', config);
     }
-    get provider() {
-        return this._provider;
-    }
     defaultModel() {
         return 'mistral-large-latest';
     }

@@ -1,16 +1,23 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const axios_1 = __importDefault(require("axios"));
-const form_data_1 = __importDefault(require("form-data"));
+const types_1 = require("./types");
+const errors_1 = require("./errors");
+const utils_1 = require("./utils");
 class Dream {
     _apiKey;
     _engine;
-    constructor(apiKey, engine = 'ultra') {
+    _config;
+    _provider = 'stability';
+    constructor(apiKey, engine = 'ultra', config = {}) {
         this._apiKey = apiKey;
         this._engine = engine;
+        this._config = {
+            apiKey,
+            timeout: config.timeout ?? (0, types_1.getGlobalConfig)().timeout,
+            maxRetries: config.maxRetries ?? (0, types_1.getGlobalConfig)().maxRetries,
+            retryDelay: config.retryDelay ?? (0, types_1.getGlobalConfig)().retryDelay,
+            debug: config.debug ?? (0, types_1.getGlobalConfig)().debug,
+        };
     }
     /**
      * Generate an image from a text prompt
@@ -21,7 +28,7 @@ class Dream {
      */
     async generate(options) {
         const { prompt, aspectRatio = '1:1', style = null, seed, negativePrompt, outputFormat = 'png', cfgScale, model, } = options;
-        const formData = new form_data_1.default();
+        const formData = new FormData();
         formData.append('prompt', prompt);
         if (aspectRatio !== '1:1') {
             formData.append('aspect_ratio', aspectRatio);
@@ -47,15 +54,27 @@ class Dream {
                 formData.append('model', model);
             }
         }
-        const { data } = await axios_1.default.post(`https://api.stability.ai/v2beta/stable-image/generate/${this._engine}`, formData, {
-            headers: {
-                Authorization: `Bearer ${this._apiKey}`,
-                Accept: 'image/*',
-                ...formData.getHeaders(),
-            },
-            responseType: 'arraybuffer',
+        const fn = async () => {
+            const response = await fetch(`https://api.stability.ai/v2beta/stable-image/generate/${this._engine}`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${this._apiKey}`,
+                    Accept: 'image/*',
+                },
+                body: formData,
+            });
+            if (!response.ok) {
+                const errorBody = await response.text().catch(() => '');
+                throw new errors_1.AIError(`Stability API error: ${response.status} ${errorBody}`, this._provider, undefined, response.status);
+            }
+            const arrayBuffer = await response.arrayBuffer();
+            return Buffer.from(arrayBuffer);
+        };
+        const timeout = this._config.timeout ?? 60000;
+        return (0, utils_1.withRetry)(() => (0, utils_1.withTimeout)(fn, timeout, this._provider), this._provider, {
+            maxRetries: this._config.maxRetries,
+            retryDelay: this._config.retryDelay,
         });
-        return Buffer.from(data);
     }
     /**
      * Generate an image from a text prompt and starting image
@@ -66,9 +85,9 @@ class Dream {
      */
     async generateFromImage(options) {
         const { image, prompt, strength = 0.35, aspectRatio = '1:1', style = null, seed, negativePrompt, outputFormat = 'png', cfgScale, model, } = options;
-        const formData = new form_data_1.default();
+        const formData = new FormData();
         formData.append('prompt', prompt);
-        formData.append('image', image, { filename: 'input_image.png', contentType: 'image/png' });
+        formData.append('image', new Blob([image], { type: 'image/png' }), 'input_image.png');
         if (typeof strength === 'number') {
             formData.append('strength', strength.toString());
         }
@@ -97,15 +116,27 @@ class Dream {
                 formData.append('model', model);
             }
         }
-        const { data } = await axios_1.default.post(`https://api.stability.ai/v2beta/stable-image/generate/${this._engine}`, formData, {
-            headers: {
-                Authorization: `Bearer ${this._apiKey}`,
-                Accept: 'image/*',
-                ...formData.getHeaders(),
-            },
-            responseType: 'arraybuffer',
+        const fn = async () => {
+            const response = await fetch(`https://api.stability.ai/v2beta/stable-image/generate/${this._engine}`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${this._apiKey}`,
+                    Accept: 'image/*',
+                },
+                body: formData,
+            });
+            if (!response.ok) {
+                const errorBody = await response.text().catch(() => '');
+                throw new errors_1.AIError(`Stability API error: ${response.status} ${errorBody}`, this._provider, undefined, response.status);
+            }
+            const arrayBuffer = await response.arrayBuffer();
+            return Buffer.from(arrayBuffer);
+        };
+        const timeout = this._config.timeout ?? 60000;
+        return (0, utils_1.withRetry)(() => (0, utils_1.withTimeout)(fn, timeout, this._provider), this._provider, {
+            maxRetries: this._config.maxRetries,
+            retryDelay: this._config.retryDelay,
         });
-        return Buffer.from(data);
     }
 }
 exports.default = Dream;

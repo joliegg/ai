@@ -40,7 +40,7 @@ class Claude {
         if (!this._client) {
             throw new errors_1.AIError('Anthropic client not initialized', this._provider);
         }
-        const model = options.model || 'claude-opus-4-20250514';
+        const model = options.model || 'claude-sonnet-4-5-20250929';
         const { systemPrompt, claudeMessages } = this.convertToClaudeMessages(messages);
         const fn = async () => {
             const params = {
@@ -90,7 +90,7 @@ class Claude {
         if (!this._client) {
             throw new errors_1.AIError('Anthropic client not initialized', this._provider);
         }
-        const model = options.model || 'claude-opus-4-20250514';
+        const model = options.model || 'claude-sonnet-4-5-20250929';
         const { systemPrompt, claudeMessages } = this.convertToClaudeMessages(messages);
         const params = {
             model,
@@ -190,14 +190,25 @@ class Claude {
                         contentBlocks.push({ type: 'text', text: part.text });
                     }
                     else if (part.type === 'image') {
-                        contentBlocks.push({
-                            type: 'image',
-                            source: {
-                                type: 'base64',
-                                media_type: (part.source.mediaType || 'image/png'),
-                                data: part.source.data,
-                            },
-                        });
+                        if (part.source.type === 'url') {
+                            contentBlocks.push({
+                                type: 'image',
+                                source: {
+                                    type: 'url',
+                                    url: part.source.data,
+                                },
+                            });
+                        }
+                        else {
+                            contentBlocks.push({
+                                type: 'image',
+                                source: {
+                                    type: 'base64',
+                                    media_type: (part.source.mediaType || 'image/png'),
+                                    data: part.source.data,
+                                },
+                            });
+                        }
                     }
                     else if (part.type === 'document') {
                         // Claude supports PDF documents

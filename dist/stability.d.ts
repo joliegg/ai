@@ -1,3 +1,4 @@
+import { ProviderConfig } from './types';
 export type Style = '3d-model' | 'analog-film' | 'anime' | 'cinematic' | 'comic-book' | 'digital-art' | 'enhance' | 'fantasy-art' | 'isometric' | 'line-art' | 'low-poly' | 'modeling-compound' | 'neon-punk' | 'origami' | 'photographic' | 'pixel-art' | 'tile-texture';
 export type AspectRatio = '16:9' | '1:1' | '21:9' | '2:3' | '3:2' | '4:5' | '5:4' | '9:16' | '9:21';
 export type OutputFormat = 'png' | 'jpeg' | 'webp';
@@ -25,7 +26,9 @@ export interface DreamResponse {
 declare class Dream {
     private _apiKey?;
     private _engine?;
-    constructor(apiKey: string, engine?: Engine);
+    private _config;
+    private readonly _provider;
+    constructor(apiKey: string, engine?: Engine, config?: Partial<ProviderConfig>);
     /**
      * Generate an image from a text prompt
      *

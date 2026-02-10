@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.calculateBackoff = exports.sleep = void 0;
 exports.withRetry = withRetry;
-exports.createTimeout = createTimeout;
 exports.withTimeout = withTimeout;
 exports.normalizeContent = normalizeContent;
 exports.generateId = generateId;
@@ -58,13 +57,6 @@ async function withRetry(fn, provider, options = {}) {
     // This should never be reached
     throw lastError || new errors_1.AIError('Unknown error', provider);
 }
-function createTimeout(ms, provider) {
-    return new Promise((_, reject) => {
-        setTimeout(() => {
-            reject(new errors_1.AIError(`Request timed out after ${ms}ms`, provider, 'TIMEOUT', 408));
-        }, ms);
-    });
-}
 /**
  * Execute a function with a timeout
  */
@@ -72,7 +64,18 @@ async function withTimeout(fn, timeout, provider) {
     if (timeout <= 0) {
         return fn();
     }
-    return Promise.race([fn(), createTimeout(timeout, provider)]);
+    let timer;
+    const timeoutPromise = new Promise((_, reject) => {
+        timer = setTimeout(() => {
+            reject(new errors_1.AIError(`Request timed out after ${timeout}ms`, provider, 'TIMEOUT', 408));
+        }, timeout);
+    });
+    try {
+        return await Promise.race([fn(), timeoutPromise]);
+    }
+    finally {
+        clearTimeout(timer);
+    }
 }
 /**
  * Normalize message content to string
@@ -110,7 +113,7 @@ function generateId(prefix = 'msg') {
  * Deep clone an object
  */
 function deepClone(obj) {
-    return JSON.parse(JSON.stringify(obj));
+    return structuredClone(obj);
 }
 /**
  * Check if a value is defined (not null or undefined)

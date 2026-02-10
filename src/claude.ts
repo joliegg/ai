@@ -24,25 +24,21 @@ import { AIError } from './errors';
 import { withRetry, withTimeout, generateId } from './utils';
 
 export type MODEL =
+  | 'claude-opus-4-6'
   | 'claude-opus-4-5-20251101'
   | 'claude-opus-4-5'
-  | 'claude-3-7-sonnet-latest'
-  | 'claude-3-7-sonnet-20250219'
-  | 'claude-3-5-haiku-latest'
-  | 'claude-3-5-haiku-20241022'
-  | 'claude-haiku-4-5'
-  | 'claude-haiku-4-5-20251001'
-  | 'claude-sonnet-4-20250514'
-  | 'claude-sonnet-4-0'
-  | 'claude-4-sonnet-20250514'
   | 'claude-sonnet-4-5'
   | 'claude-sonnet-4-5-20250929'
+  | 'claude-haiku-4-5'
+  | 'claude-haiku-4-5-20251001'
+  | 'claude-sonnet-4-0'
+  | 'claude-sonnet-4-20250514'
   | 'claude-opus-4-0'
   | 'claude-opus-4-20250514'
-  | 'claude-4-opus-20250514'
+  | 'claude-opus-4-1'
   | 'claude-opus-4-1-20250805'
-  | 'claude-3-opus-latest'
-  | 'claude-3-opus-20240229'
+  | 'claude-3-7-sonnet-latest'
+  | 'claude-3-7-sonnet-20250219'
   | 'claude-3-haiku-20240307'
   | (string & {});
 
@@ -85,7 +81,7 @@ class Claude {
       throw new AIError('Anthropic client not initialized', this._provider);
     }
 
-    const model = options.model || 'claude-opus-4-20250514';
+    const model = options.model || 'claude-sonnet-4-5-20250929';
     const { systemPrompt, claudeMessages } = this.convertToClaudeMessages(messages);
 
     const fn = async (): Promise<Response> => {
@@ -146,7 +142,7 @@ class Claude {
       throw new AIError('Anthropic client not initialized', this._provider);
     }
 
-    const model = options.model || 'claude-opus-4-20250514';
+    const model = options.model || 'claude-sonnet-4-5-20250929';
     const { systemPrompt, claudeMessages } = this.convertToClaudeMessages(messages);
 
     const params: Anthropic.Messages.MessageCreateParamsStreaming = {
@@ -259,18 +255,28 @@ class Claude {
           } else if (part.type === 'text') {
             contentBlocks.push({ type: 'text', text: part.text });
           } else if (part.type === 'image') {
-            contentBlocks.push({
-              type: 'image',
-              source: {
-                type: 'base64',
-                media_type: (part.source.mediaType || 'image/png') as
-                  | 'image/jpeg'
-                  | 'image/png'
-                  | 'image/gif'
-                  | 'image/webp',
-                data: part.source.data,
-              },
-            });
+            if (part.source.type === 'url') {
+              contentBlocks.push({
+                type: 'image',
+                source: {
+                  type: 'url',
+                  url: part.source.data,
+                },
+              } as Anthropic.Messages.ContentBlockParam);
+            } else {
+              contentBlocks.push({
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: (part.source.mediaType || 'image/png') as
+                    | 'image/jpeg'
+                    | 'image/png'
+                    | 'image/gif'
+                    | 'image/webp',
+                  data: part.source.data,
+                },
+              });
+            }
           } else if (part.type === 'document') {
             // Claude supports PDF documents
             // eslint-disable-next-line @typescript-eslint/no-explicit-any

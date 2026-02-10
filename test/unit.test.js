@@ -8,6 +8,8 @@ const {
   Grok,
   Mistral,
   Ollama,
+  Qwen,
+  Kimi,
   AIError,
   AuthenticationError,
   RateLimitError,
@@ -401,11 +403,16 @@ describe('DeepSeek Unit Tests', () => {
 
   it('should complete chat with correct default model', async () => {
     await deepSeek.complete([{ role: 'user', content: 'Hello' }]);
-    assert.strictEqual(mockClient.lastChatParams.model, 'deepseek-chat');
+    assert.strictEqual(mockClient.lastChatParams.model, 'deepseek-reasoner');
   });
 
   it('should return correct provider name', () => {
     assert.strictEqual(deepSeek.provider, 'deepseek');
+  });
+
+  it('should generate embeddings with correct default model', async () => {
+    await deepSeek.embed('Hello world');
+    assert.strictEqual(mockClient.lastEmbeddingParams.model, 'deepseek-embedding-v2');
   });
 });
 
@@ -425,7 +432,7 @@ describe('Grok Unit Tests', () => {
 
   it('should complete chat with correct default model', async () => {
     await grok.complete([{ role: 'user', content: 'Hello' }]);
-    assert.strictEqual(mockClient.lastChatParams.model, 'grok-4');
+    assert.strictEqual(mockClient.lastChatParams.model, 'grok-4-1-fast-reasoning');
   });
 
   it('should throw error if n > 10 for image generation', async () => {
@@ -440,6 +447,33 @@ describe('Grok Unit Tests', () => {
 
   it('should return correct provider name', () => {
     assert.strictEqual(grok.provider, 'grok');
+  });
+
+  it('should throw error for video duration less than 1', async () => {
+    await assert.rejects(async () => {
+      await grok.generateVideo({
+        prompt: 'test video',
+        duration: 0,
+      });
+    }, /Video duration must be between 1 and 15 seconds/);
+  });
+
+  it('should throw error for video duration greater than 15', async () => {
+    await assert.rejects(async () => {
+      await grok.generateVideo({
+        prompt: 'test video',
+        duration: 20,
+      });
+    }, /Video duration must be between 1 and 15 seconds/);
+  });
+
+  it('should throw error for video generation with uninitialized client', async () => {
+    const uninitGrok = new Grok();
+    await assert.rejects(async () => {
+      await uninitGrok.generateVideo({
+        prompt: 'test video',
+      });
+    }, /Grok client not initialized/);
   });
 });
 
@@ -493,6 +527,59 @@ describe('Ollama Unit Tests', () => {
 
   it('should return correct provider name', () => {
     assert.strictEqual(ollama.provider, 'ollama');
+  });
+});
+
+// =============================================================================
+// Qwen Unit Tests
+// =============================================================================
+
+describe('Qwen Unit Tests', () => {
+  let qwen;
+  let mockClient;
+
+  beforeEach(() => {
+    qwen = new Qwen('fake-key');
+    mockClient = new MockOpenAIClient();
+    qwen._client = mockClient;
+  });
+
+  it('should complete chat with correct default model', async () => {
+    await qwen.complete([{ role: 'user', content: 'Hello' }]);
+    assert.strictEqual(mockClient.lastChatParams.model, 'qwen-plus');
+  });
+
+  it('should return correct provider name', () => {
+    assert.strictEqual(qwen.provider, 'qwen');
+  });
+
+  it('should generate embeddings with correct default model', async () => {
+    await qwen.embed('Hello world');
+    assert.strictEqual(mockClient.lastEmbeddingParams.model, 'text-embedding-v4');
+  });
+});
+
+// =============================================================================
+// Kimi Unit Tests
+// =============================================================================
+
+describe('Kimi Unit Tests', () => {
+  let kimi;
+  let mockClient;
+
+  beforeEach(() => {
+    kimi = new Kimi('fake-key');
+    mockClient = new MockOpenAIClient();
+    kimi._client = mockClient;
+  });
+
+  it('should complete chat with correct default model', async () => {
+    await kimi.complete([{ role: 'user', content: 'Hello' }]);
+    assert.strictEqual(mockClient.lastChatParams.model, 'kimi-k2.5');
+  });
+
+  it('should return correct provider name', () => {
+    assert.strictEqual(kimi.provider, 'kimi');
   });
 });
 
@@ -1117,9 +1204,9 @@ describe('Gemini Feature Tests', () => {
     gemini._client = mockClient;
   });
 
-  it('should use gemini-3.0-pro as default model', async () => {
+  it('should use gemini-2.5-pro as default model', async () => {
     await gemini.complete([{ role: 'user', content: 'Hello' }]);
-    assert.strictEqual(mockClient.lastGenerateParams.model, 'gemini-3.0-pro');
+    assert.strictEqual(mockClient.lastGenerateParams.model, 'gemini-2.5-pro');
   });
 
   it('should set responseMimeType for JSON mode', async () => {
@@ -1242,16 +1329,9 @@ describe('Reasoning Feature Tests', () => {
       grok._client = mockClient;
     });
 
-    it('should use grok-4 as default model', async () => {
-      // Updated to grok-3 based on plan, need to update src/grok.ts first? 
-      // Wait, src/grok.ts currently has 'grok-4' in my last read? 
-      // Let's check grok.ts again. It had 'grok-4'. 
-      // Implementation plan said "Update to grok-3".
-      // If the code has 'grok-4', I should probably stick to what the code has or update the code.
-      // The user asked to check `src/grok.ts` and the file showed `grok-4`.
-      // I'll stick to `grok-4` for now as it seems to be the current code state.
+    it('should use grok-4-1-fast-reasoning as default model', async () => {
       await grok.complete([{ role: 'user', content: 'Think' }]);
-      assert.strictEqual(mockClient.lastChatParams.model, 'grok-4');
+      assert.strictEqual(mockClient.lastChatParams.model, 'grok-4-1-fast-reasoning');
     });
   });
 
@@ -1292,5 +1372,827 @@ describe('Reasoning Feature Tests', () => {
 
       assert.strictEqual(mockClient.lastParams.thinking, undefined);
     });
+  });
+});
+
+// =============================================================================
+// Conversation Improvements Tests
+// =============================================================================
+
+/**
+ * Helper: create a mock provider that resolves/rejects on demand.
+ */
+function createMockProvider(overrides = {}) {
+  return {
+    provider: 'mock',
+    complete: async (messages, options) => ({
+      id: 'resp-1',
+      provider: 'mock',
+      model: 'mock-model',
+      content: 'Mock reply',
+      finishReason: 'stop',
+      usage: { promptTokens: 5, completionTokens: 3, totalTokens: 8 },
+    }),
+    stream: async function* (messages, options) {
+      yield {
+        id: 'stream-1',
+        provider: 'mock',
+        model: 'mock-model',
+        delta: { content: 'Hello' },
+      };
+      yield {
+        id: 'stream-1',
+        provider: 'mock',
+        model: 'mock-model',
+        delta: { content: ' World' },
+        finishReason: 'stop',
+      };
+    },
+    ...overrides,
+  };
+}
+
+// -----------------------------------------------------------------------------
+// Error Rollback Tests
+// -----------------------------------------------------------------------------
+
+describe('Error Rollback Tests', () => {
+  it('send() rolls back user message on API error', async () => {
+    const provider = createMockProvider({
+      complete: async () => { throw new Error('API failure'); },
+    });
+    const conv = createConversation(provider);
+
+    await assert.rejects(() => conv.send('Hello'), /API failure/);
+    assert.strictEqual(conv.getHistory().length, 0);
+  });
+
+  it('sendStream() rolls back user message on stream error', async () => {
+    const provider = createMockProvider({
+      stream: async function* () {
+        yield { id: 's1', provider: 'mock', model: 'm', delta: { content: 'Hi' } };
+        throw new Error('Stream broke');
+      },
+    });
+    const conv = createConversation(provider);
+
+    await assert.rejects(async () => {
+      for await (const _chunk of conv.sendStream('Hello')) { /* consume */ }
+    }, /Stream broke/);
+    assert.strictEqual(conv.getHistory().length, 0);
+  });
+
+  it('send() preserves existing history on error (first succeeds, second fails)', async () => {
+    let callCount = 0;
+    const provider = createMockProvider({
+      complete: async () => {
+        callCount++;
+        if (callCount === 2) throw new Error('Second call fails');
+        return {
+          id: 'r1', provider: 'mock', model: 'm', content: 'Reply 1',
+          finishReason: 'stop',
+        };
+      },
+    });
+    const conv = createConversation(provider);
+
+    await conv.send('First');
+    assert.strictEqual(conv.getHistory().length, 2); // user + assistant
+
+    await assert.rejects(() => conv.send('Second'), /Second call fails/);
+    // Should still have exactly the first exchange
+    assert.strictEqual(conv.getHistory().length, 2);
+    assert.strictEqual(conv.getHistory()[0].content, 'First');
+  });
+});
+
+// -----------------------------------------------------------------------------
+// Stream Tool Call Accumulation Tests
+// -----------------------------------------------------------------------------
+
+describe('Stream Tool Call Accumulation Tests', () => {
+  it('sendStream() captures tool calls in history via onToolCall callback', async () => {
+    const provider = createMockProvider({
+      stream: async function* (messages, options) {
+        yield {
+          id: 's1', provider: 'mock', model: 'm',
+          delta: { content: 'I will use a tool' },
+        };
+        yield {
+          id: 's1', provider: 'mock', model: 'm',
+          delta: {},
+          finishReason: 'tool_calls',
+        };
+        // Simulate onToolCall being called after stream ends (like base-openai does)
+        if (options.onToolCall) {
+          options.onToolCall({
+            id: 'call_1',
+            name: 'get_weather',
+            arguments: { city: 'NYC' },
+          });
+        }
+      },
+    });
+    const conv = createConversation(provider);
+
+    for await (const _chunk of conv.sendStream('What is the weather?')) { /* consume */ }
+
+    const history = conv.getHistory();
+    assert.strictEqual(history.length, 2); // user + assistant
+    const assistantMsg = history[1];
+    assert.ok(Array.isArray(assistantMsg.content));
+    const toolUsePart = assistantMsg.content.find((p) => p.type === 'tool_use');
+    assert.ok(toolUsePart, 'Should have a tool_use content part');
+    assert.strictEqual(toolUsePart.name, 'get_weather');
+    assert.deepStrictEqual(toolUsePart.input, { city: 'NYC' });
+  });
+
+  it('sendStream() chains user-provided onToolCall callback', async () => {
+    const userCalls = [];
+    const provider = createMockProvider({
+      stream: async function* (messages, options) {
+        yield { id: 's1', provider: 'mock', model: 'm', delta: { content: 'ok' } };
+        yield { id: 's1', provider: 'mock', model: 'm', delta: {}, finishReason: 'tool_calls' };
+        if (options.onToolCall) {
+          options.onToolCall({ id: 'call_2', name: 'search', arguments: { q: 'test' } });
+        }
+      },
+    });
+    const conv = createConversation(provider);
+
+    for await (const _chunk of conv.sendStream('search', {
+      onToolCall: (tc) => userCalls.push(tc),
+    })) { /* consume */ }
+
+    assert.strictEqual(userCalls.length, 1);
+    assert.strictEqual(userCalls[0].name, 'search');
+  });
+});
+
+// -----------------------------------------------------------------------------
+// Exchange-Aware Trimming Tests
+// -----------------------------------------------------------------------------
+
+describe('Exchange-Aware Trimming Tests', () => {
+  it('trims whole exchanges, not individual messages', async () => {
+    const provider = createMockProvider();
+    const conv = createConversation(provider, { maxHistory: 4 });
+
+    // Send 3 exchanges: each creates user + assistant = 6 non-system messages total
+    await conv.send('msg1');
+    await conv.send('msg2');
+    await conv.send('msg3');
+
+    const history = conv.getHistory();
+    // maxHistory=4, so oldest exchange(s) trimmed by exchange boundary
+    // 3 exchanges = 6 messages. We need ≤4. Remove first exchange → 4 messages.
+    assert.strictEqual(history.length, 4);
+    assert.strictEqual(history[0].content, 'msg2');
+  });
+
+  it('never splits tool-use/tool-result sequences', async () => {
+    const provider = createMockProvider({
+      complete: async () => ({
+        id: 'r1', provider: 'mock', model: 'm', content: 'Reply',
+        finishReason: 'stop',
+      }),
+    });
+    const conv = createConversation(provider, { maxHistory: 4 });
+
+    // First exchange: user → assistant
+    await conv.send('msg1');
+    // Add tool result (part of first exchange context)
+    conv.addToolResult('tool_1', 'result1');
+    // Second exchange: user → assistant
+    await conv.send('msg2');
+    // Third exchange: user → assistant
+    await conv.send('msg3');
+
+    const history = conv.getHistory();
+    // Verify no orphaned tool results - tool messages should stick with their exchange
+    const toolMessages = history.filter((m) => m.role === 'tool');
+    for (const tm of toolMessages) {
+      const idx = history.indexOf(tm);
+      // A tool message should always be preceded by an assistant message, not be first
+      assert.ok(idx > 0, 'Tool message should not be first in history');
+    }
+  });
+
+  it('keeps at least one exchange even if over limit', async () => {
+    const provider = createMockProvider();
+    // maxHistory=1 but one exchange has at least 2 messages (user + assistant)
+    const conv = createConversation(provider, { maxHistory: 1 });
+
+    await conv.send('Hello');
+
+    const history = conv.getHistory();
+    // Should keep at least 1 exchange (2 messages)
+    assert.ok(history.length >= 2);
+  });
+
+  it('no trimming when under limit', async () => {
+    const provider = createMockProvider();
+    const conv = createConversation(provider, { maxHistory: 20 });
+
+    await conv.send('msg1');
+    await conv.send('msg2');
+
+    assert.strictEqual(conv.getHistory().length, 4); // 2 exchanges × 2 messages
+  });
+});
+
+// -----------------------------------------------------------------------------
+// Deep Clone Tests
+// -----------------------------------------------------------------------------
+
+describe('Deep Clone Tests', () => {
+  it('mutating returned history does not affect conversation', async () => {
+    const provider = createMockProvider();
+    const conv = createConversation(provider);
+    await conv.send('Hello');
+
+    const history = conv.getHistory();
+    history[0].content = 'MUTATED';
+    history.push({ role: 'user', content: 'injected' });
+
+    const fresh = conv.getHistory();
+    assert.strictEqual(fresh[0].content, 'Hello');
+    assert.strictEqual(fresh.length, 2);
+  });
+
+  it('getHistory returns independent copy', async () => {
+    const provider = createMockProvider();
+    const conv = createConversation(provider);
+    await conv.send('Hello');
+
+    const h1 = conv.getHistory();
+    const h2 = conv.getHistory();
+    assert.notStrictEqual(h1, h2);
+    assert.notStrictEqual(h1[0], h2[0]);
+  });
+});
+
+// -----------------------------------------------------------------------------
+// Serialization Tests
+// -----------------------------------------------------------------------------
+
+describe('Serialization Tests', () => {
+  it('toJSON() captures version, options, history', async () => {
+    const provider = createMockProvider();
+    const conv = createConversation(provider, {
+      systemPrompt: 'You are helpful',
+      model: 'test-model',
+    });
+    await conv.send('Hello');
+
+    const json = conv.toJSON();
+    assert.strictEqual(json.version, 1);
+    assert.strictEqual(json.options.systemPrompt, 'You are helpful');
+    assert.strictEqual(json.options.model, 'test-model');
+    assert.ok(json.history.length >= 2); // system + user + assistant
+  });
+
+  it('fromJSON() restores state correctly', async () => {
+    const provider = createMockProvider();
+    const conv = createConversation(provider, { systemPrompt: 'Be nice' });
+    await conv.send('Hello');
+
+    const json = conv.toJSON();
+    const restored = Conversation.fromJSON(provider, json);
+
+    const origHistory = conv.getHistory();
+    const restoredHistory = restored.getHistory();
+    assert.deepStrictEqual(restoredHistory, origHistory);
+  });
+
+  it('round-trip preserves tool call history', async () => {
+    const provider = createMockProvider({
+      complete: async () => ({
+        id: 'r1', provider: 'mock', model: 'm',
+        content: 'Using tool',
+        toolCalls: [{ id: 'tc1', name: 'calc', arguments: { expr: '2+2' } }],
+        finishReason: 'tool_calls',
+      }),
+    });
+    const conv = createConversation(provider);
+    await conv.send('Calculate 2+2');
+    conv.addToolResult('tc1', '4', 'calc');
+
+    const json = conv.toJSON();
+    const restored = Conversation.fromJSON(provider, json);
+
+    assert.deepStrictEqual(restored.getHistory(), conv.getHistory());
+  });
+
+  it('restored conversation allows continued chat', async () => {
+    const provider = createMockProvider();
+    const conv = createConversation(provider, { systemPrompt: 'Hi' });
+    await conv.send('First');
+
+    const json = conv.toJSON();
+    const restored = Conversation.fromJSON(provider, json);
+    await restored.send('Second');
+
+    // Original has 3 messages (system + user + assistant), restored has 5
+    assert.strictEqual(conv.getHistory().length, 3);
+    assert.strictEqual(restored.getHistory().length, 5);
+  });
+
+  it('fromJSON() rejects unknown version', () => {
+    const provider = createMockProvider();
+    assert.throws(
+      () => Conversation.fromJSON(provider, { version: 99, options: {}, history: [] }),
+      /Unsupported conversation version: 99/
+    );
+  });
+});
+
+// -----------------------------------------------------------------------------
+// Token-Aware Context Management Tests
+// -----------------------------------------------------------------------------
+
+describe('Token-Aware Context Management Tests', () => {
+  it('trims exchanges when over token budget', async () => {
+    const provider = createMockProvider();
+    // Very small token budget to force trimming
+    const conv = createConversation(provider, { maxContextTokens: 30 });
+
+    await conv.send('First message with some content here');
+    await conv.send('Second message with more content here');
+    await conv.send('Third message with even more content');
+
+    const history = conv.getHistory();
+    // Should have trimmed older exchanges to fit within budget
+    // At minimum, keeps 1 exchange
+    assert.ok(history.length >= 2, 'Should keep at least one exchange');
+    assert.ok(history.length < 6, 'Should have trimmed some exchanges');
+  });
+
+  it('token budget works alongside maxHistory (stricter wins)', async () => {
+    const provider = createMockProvider();
+    // maxHistory is generous, but token budget is tight
+    const conv = createConversation(provider, { maxHistory: 100, maxContextTokens: 30 });
+
+    await conv.send('First message with lots of content padding here');
+    await conv.send('Second message also with lots of content padding');
+    await conv.send('Third message yet more content padding here too');
+
+    const history = conv.getHistory();
+    // Token budget should be the binding constraint
+    assert.ok(history.length < 6, 'Token budget should trim even though maxHistory is generous');
+  });
+
+  it('system prompt tokens count against budget', async () => {
+    const longSystemPrompt = 'A'.repeat(200); // ~50+ tokens
+    const provider = createMockProvider();
+    const conv = createConversation(provider, {
+      systemPrompt: longSystemPrompt,
+      maxContextTokens: 60,
+    });
+
+    await conv.send('msg1');
+    await conv.send('msg2');
+
+    const history = conv.getHistory();
+    // System prompt takes significant tokens, so fewer exchanges fit
+    const systemMsg = history.find((m) => m.role === 'system');
+    assert.ok(systemMsg, 'System prompt should be preserved');
+  });
+});
+
+// -----------------------------------------------------------------------------
+// Message Editing Tests
+// -----------------------------------------------------------------------------
+
+describe('Message Editing Tests', () => {
+  it('replaces content and truncates after', async () => {
+    const provider = createMockProvider();
+    const conv = createConversation(provider);
+    await conv.send('First');
+    await conv.send('Second');
+
+    // Edit the first user message (index 0)
+    conv.editMessage(0, 'Edited first');
+
+    const history = conv.getHistory();
+    assert.strictEqual(history.length, 1);
+    assert.strictEqual(history[0].content, 'Edited first');
+    assert.strictEqual(history[0].role, 'user');
+  });
+
+  it('editMessage() + send() rebuilds from that point', async () => {
+    const provider = createMockProvider();
+    const conv = createConversation(provider);
+    await conv.send('Original question');
+    await conv.send('Follow up');
+
+    // Edit the first user message and re-send
+    conv.editMessage(0, 'Better question');
+    await conv.send('Better question'); // This becomes a new send from the edited point
+
+    const history = conv.getHistory();
+    // After edit: [edited user]. After send: [edited user, new user, assistant]
+    // Actually editMessage truncates to [edited user at idx 0], then send adds user + assistant
+    assert.strictEqual(history.length, 3); // edited + new user + assistant
+  });
+
+  it('throws on out-of-bounds index', () => {
+    const provider = createMockProvider();
+    const conv = createConversation(provider);
+
+    assert.throws(() => conv.editMessage(5, 'nope'), /out of bounds/);
+    assert.throws(() => conv.editMessage(-1, 'nope'), /out of bounds/);
+  });
+
+  it('throws on system message edit', async () => {
+    const provider = createMockProvider();
+    const conv = createConversation(provider, { systemPrompt: 'System' });
+
+    assert.throws(
+      () => conv.editMessage(0, 'new system'),
+      /Cannot edit system messages/
+    );
+  });
+});
+
+// =============================================================================
+// Ergonomic Multimodal Send Tests
+// =============================================================================
+
+describe('Ergonomic Multimodal Send Tests', () => {
+  it('send() accepts plain string (existing behavior)', async () => {
+    const provider = createMockProvider();
+    const conv = createConversation(provider);
+    await conv.send('Hello');
+
+    const history = conv.getHistory();
+    assert.strictEqual(history[0].role, 'user');
+    assert.strictEqual(history[0].content, 'Hello');
+  });
+
+  it('send() accepts Message with role (existing behavior)', async () => {
+    const provider = createMockProvider();
+    const conv = createConversation(provider);
+    await conv.send({ role: 'user', content: 'Hello' });
+
+    const history = conv.getHistory();
+    assert.strictEqual(history[0].role, 'user');
+    assert.strictEqual(history[0].content, 'Hello');
+  });
+
+  it('send() accepts single MessageContent object and wraps as user message', async () => {
+    const provider = createMockProvider();
+    const conv = createConversation(provider);
+    const imageContent = { type: 'image', source: { type: 'url', data: 'https://example.com/img.png' } };
+    await conv.send(imageContent);
+
+    const history = conv.getHistory();
+    assert.strictEqual(history[0].role, 'user');
+    assert.deepStrictEqual(history[0].content, imageContent);
+  });
+
+  it('send() accepts MessageContent[] and wraps as user message', async () => {
+    const provider = createMockProvider();
+    const conv = createConversation(provider);
+    const parts = [
+      { type: 'text', text: 'Describe this:' },
+      { type: 'image', source: { type: 'url', data: 'https://example.com/img.png' } },
+    ];
+    await conv.send(parts);
+
+    const history = conv.getHistory();
+    assert.strictEqual(history[0].role, 'user');
+    assert.ok(Array.isArray(history[0].content));
+    assert.strictEqual(history[0].content.length, 2);
+  });
+
+  it('sendStream() accepts MessageContent[]', async () => {
+    const provider = createMockProvider();
+    const conv = createConversation(provider);
+    const parts = [
+      { type: 'text', text: 'Hello' },
+      { type: 'image', source: { type: 'url', data: 'https://example.com/img.png' } },
+    ];
+
+    for await (const _chunk of conv.sendStream(parts)) { /* consume */ }
+
+    const history = conv.getHistory();
+    assert.strictEqual(history[0].role, 'user');
+    assert.ok(Array.isArray(history[0].content));
+  });
+
+  it('send() distinguishes Message (has role) from MessageContent (has type)', async () => {
+    const provider = createMockProvider();
+    const conv = createConversation(provider);
+
+    // A Message has 'role', should be used as-is
+    await conv.send({ role: 'user', content: 'Direct message' });
+    const history1 = conv.getHistory();
+    assert.strictEqual(history1[0].role, 'user');
+    assert.strictEqual(history1[0].content, 'Direct message');
+
+    // A MessageContent has 'type' but no 'role', should be wrapped
+    const conv2 = createConversation(provider);
+    await conv2.send({ type: 'text', text: 'Wrapped content' });
+    const history2 = conv2.getHistory();
+    assert.strictEqual(history2[0].role, 'user');
+    assert.deepStrictEqual(history2[0].content, { type: 'text', text: 'Wrapped content' });
+  });
+});
+
+// =============================================================================
+// Provider Switching Tests
+// =============================================================================
+
+describe('Provider Switching Tests', () => {
+  it('currentProvider returns the provider', () => {
+    const provider = createMockProvider();
+    const conv = createConversation(provider);
+    assert.strictEqual(conv.currentProvider, provider);
+  });
+
+  it('setProvider() permanently changes provider', async () => {
+    const provider1 = createMockProvider({ provider: 'provider1' });
+    const provider2 = createMockProvider({
+      provider: 'provider2',
+      complete: async () => ({
+        id: 'r2', provider: 'provider2', model: 'm2', content: 'From provider2',
+        finishReason: 'stop',
+      }),
+    });
+    const conv = createConversation(provider1);
+
+    conv.setProvider(provider2);
+    assert.strictEqual(conv.currentProvider, provider2);
+
+    const response = await conv.send('Hello');
+    assert.strictEqual(response.content, 'From provider2');
+  });
+
+  it('per-call provider override does not change permanent provider', async () => {
+    const provider1 = createMockProvider({ provider: 'provider1' });
+    const provider2 = createMockProvider({
+      provider: 'provider2',
+      complete: async () => ({
+        id: 'r2', provider: 'provider2', model: 'm2', content: 'From provider2',
+        finishReason: 'stop',
+      }),
+    });
+    const conv = createConversation(provider1);
+
+    const response = await conv.send('Hello', { provider: provider2 });
+    assert.strictEqual(response.content, 'From provider2');
+    // Permanent provider unchanged
+    assert.strictEqual(conv.currentProvider, provider1);
+  });
+
+  it('per-call provider override works with sendStream()', async () => {
+    const provider1 = createMockProvider({ provider: 'provider1' });
+    const provider2 = createMockProvider({
+      provider: 'provider2',
+      stream: async function* () {
+        yield { id: 's1', provider: 'provider2', model: 'm2', delta: { content: 'Streamed' }, finishReason: 'stop' };
+      },
+    });
+    const conv = createConversation(provider1);
+    const chunks = [];
+
+    for await (const chunk of conv.sendStream('Hello', { provider: provider2 })) {
+      chunks.push(chunk);
+    }
+
+    assert.strictEqual(chunks[0].provider, 'provider2');
+    assert.strictEqual(conv.currentProvider, provider1);
+  });
+
+  it('fork() copies current provider after setProvider()', async () => {
+    const provider1 = createMockProvider({ provider: 'provider1' });
+    const provider2 = createMockProvider({ provider: 'provider2' });
+    const conv = createConversation(provider1);
+
+    conv.setProvider(provider2);
+    const forked = conv.fork();
+
+    assert.strictEqual(forked.currentProvider, provider2);
+  });
+});
+
+// =============================================================================
+// Automated Tool Loop Tests
+// =============================================================================
+
+describe('Automated Tool Loop Tests', () => {
+  it('completes immediately when no tool calls', async () => {
+    const provider = createMockProvider();
+    const conv = createConversation(provider);
+
+    const response = await conv.runToolLoop('Hello', {
+      toolHandler: async () => 'result',
+    });
+
+    assert.strictEqual(response.finishReason, 'stop');
+    assert.strictEqual(response.content, 'Mock reply');
+  });
+
+  it('executes one round of tool calls', async () => {
+    let callCount = 0;
+    const provider = createMockProvider({
+      complete: async () => {
+        callCount++;
+        if (callCount === 1) {
+          return {
+            id: 'r1', provider: 'mock', model: 'm',
+            content: 'Let me call a tool',
+            toolCalls: [{ id: 'tc1', name: 'get_weather', arguments: { city: 'NYC' } }],
+            finishReason: 'tool_calls',
+          };
+        }
+        return {
+          id: 'r2', provider: 'mock', model: 'm',
+          content: 'The weather is sunny',
+          finishReason: 'stop',
+        };
+      },
+    });
+    const conv = createConversation(provider);
+
+    const response = await conv.runToolLoop('What is the weather?', {
+      toolHandler: async (tc) => {
+        assert.strictEqual(tc.name, 'get_weather');
+        return 'Sunny, 72°F';
+      },
+    });
+
+    assert.strictEqual(response.content, 'The weather is sunny');
+    assert.strictEqual(response.finishReason, 'stop');
+
+    // Check history: user → assistant(tool_calls) → tool → assistant(final)
+    const history = conv.getHistory();
+    assert.strictEqual(history[0].role, 'user');
+    assert.strictEqual(history[1].role, 'assistant');
+    assert.strictEqual(history[2].role, 'tool');
+    assert.strictEqual(history[3].role, 'assistant');
+  });
+
+  it('handles multiple sequential rounds', async () => {
+    let callCount = 0;
+    const provider = createMockProvider({
+      complete: async () => {
+        callCount++;
+        if (callCount <= 2) {
+          return {
+            id: `r${callCount}`, provider: 'mock', model: 'm',
+            content: `Round ${callCount}`,
+            toolCalls: [{ id: `tc${callCount}`, name: `tool${callCount}`, arguments: {} }],
+            finishReason: 'tool_calls',
+          };
+        }
+        return {
+          id: 'r3', provider: 'mock', model: 'm',
+          content: 'Final answer',
+          finishReason: 'stop',
+        };
+      },
+    });
+    const conv = createConversation(provider);
+
+    const response = await conv.runToolLoop('Start', {
+      toolHandler: async () => 'ok',
+    });
+
+    assert.strictEqual(response.content, 'Final answer');
+    assert.strictEqual(callCount, 3);
+  });
+
+  it('respects maxIterations', async () => {
+    let callCount = 0;
+    const provider = createMockProvider({
+      complete: async () => {
+        callCount++;
+        return {
+          id: `r${callCount}`, provider: 'mock', model: 'm',
+          content: `Round ${callCount}`,
+          toolCalls: [{ id: `tc${callCount}`, name: 'tool', arguments: {} }],
+          finishReason: 'tool_calls',
+        };
+      },
+    });
+    const conv = createConversation(provider);
+
+    const response = await conv.runToolLoop('Start', {
+      toolHandler: async () => 'ok',
+      maxIterations: 2,
+    });
+
+    // 1 initial send() + 2 loop iterations = 3 complete calls
+    assert.strictEqual(callCount, 3);
+    assert.strictEqual(response.finishReason, 'tool_calls');
+  });
+
+  it('default maxIterations is 10', async () => {
+    let callCount = 0;
+    const provider = createMockProvider({
+      complete: async () => {
+        callCount++;
+        return {
+          id: `r${callCount}`, provider: 'mock', model: 'm',
+          content: `Round ${callCount}`,
+          toolCalls: [{ id: `tc${callCount}`, name: 'tool', arguments: {} }],
+          finishReason: 'tool_calls',
+        };
+      },
+    });
+    const conv = createConversation(provider);
+
+    await conv.runToolLoop('Start', {
+      toolHandler: async () => 'ok',
+    });
+
+    // 1 initial send() + 10 loop iterations = 11 complete calls
+    assert.strictEqual(callCount, 11);
+  });
+
+  it('propagates toolHandler errors', async () => {
+    const provider = createMockProvider({
+      complete: async () => ({
+        id: 'r1', provider: 'mock', model: 'm',
+        content: 'Calling tool',
+        toolCalls: [{ id: 'tc1', name: 'failing_tool', arguments: {} }],
+        finishReason: 'tool_calls',
+      }),
+    });
+    const conv = createConversation(provider);
+
+    await assert.rejects(
+      () => conv.runToolLoop('Do something', {
+        toolHandler: async () => { throw new Error('Tool failed'); },
+      }),
+      /Tool failed/
+    );
+  });
+
+  it('handles multiple parallel tool calls in one round', async () => {
+    let callCount = 0;
+    const handledTools = [];
+    const provider = createMockProvider({
+      complete: async () => {
+        callCount++;
+        if (callCount === 1) {
+          return {
+            id: 'r1', provider: 'mock', model: 'm',
+            content: 'Calling two tools',
+            toolCalls: [
+              { id: 'tc1', name: 'tool_a', arguments: { x: 1 } },
+              { id: 'tc2', name: 'tool_b', arguments: { y: 2 } },
+            ],
+            finishReason: 'tool_calls',
+          };
+        }
+        return {
+          id: 'r2', provider: 'mock', model: 'm',
+          content: 'Done with both',
+          finishReason: 'stop',
+        };
+      },
+    });
+    const conv = createConversation(provider);
+
+    const response = await conv.runToolLoop('Use tools', {
+      toolHandler: async (tc) => {
+        handledTools.push(tc.name);
+        return `result_${tc.name}`;
+      },
+    });
+
+    assert.deepStrictEqual(handledTools, ['tool_a', 'tool_b']);
+    assert.strictEqual(response.content, 'Done with both');
+
+    // Check history has two tool result messages
+    const history = conv.getHistory();
+    const toolMessages = history.filter((m) => m.role === 'tool');
+    assert.strictEqual(toolMessages.length, 2);
+  });
+
+  it('passes completion options through to provider', async () => {
+    let capturedOptions = null;
+    const provider = createMockProvider({
+      complete: async (messages, options) => {
+        capturedOptions = options;
+        return {
+          id: 'r1', provider: 'mock', model: 'm', content: 'Done',
+          finishReason: 'stop',
+        };
+      },
+    });
+    const conv = createConversation(provider);
+
+    await conv.runToolLoop('Hello', {
+      toolHandler: async () => 'ok',
+      temperature: 0.5,
+      model: 'custom-model',
+    });
+
+    assert.strictEqual(capturedOptions.temperature, 0.5);
+    assert.strictEqual(capturedOptions.model, 'custom-model');
   });
 });

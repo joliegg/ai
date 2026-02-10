@@ -53,6 +53,7 @@ export interface ToolResultContent {
   type: 'tool_result';
   toolUseId: string;
   content: string;
+  name?: string;
 }
 
 export type MessageContent =
@@ -250,7 +251,7 @@ export interface ImageGenerationProvider {
 
 export type AudioResponseFormat = 'json' | 'text' | 'srt' | 'verbose_json' | 'vtt';
 export type TTSVoice = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer';
-export type TTSModel = 'tts-1' | 'tts-1-hd';
+export type TTSModel = 'gpt-4o-mini-tts' | 'tts-1' | 'tts-1-hd';
 
 export interface TranscriptionOptions {
   model?: string;
@@ -390,6 +391,30 @@ export interface ConversationOptions {
   maxTokens?: number;
   temperature?: number;
   maxHistory?: number;
+  maxContextTokens?: number;
+}
+
+export interface ConversationJSON {
+  version: 1;
+  options: ConversationOptions;
+  history: Message[];
+}
+
+export type SendContent = string | Message | MessageContent | MessageContent[];
+
+export type ToolHandler = (toolCall: ToolCall) => Promise<string>;
+
+export interface ConversationSendOptions extends CompletionOptions {
+  provider?: AIProvider;
+}
+
+export interface ConversationStreamOptions extends StreamOptions {
+  provider?: AIProvider;
+}
+
+export interface ToolLoopOptions extends Partial<ConversationSendOptions> {
+  toolHandler: ToolHandler;
+  maxIterations?: number;
 }
 
 // =============================================================================
@@ -486,7 +511,14 @@ export interface RealtimeEvent {
 // Imagen Types (Gemini)
 // =============================================================================
 
-export type ImagenModel = 'imagen-3.0-generate-001' | 'imagen-3.0-fast-generate-001';
+export type ImagenModel =
+  | 'imagen-4.0-ultra-generate-preview-06-06'
+  | 'imagen-4.0-generate-preview-06-06'
+  | 'imagen-4.0-fast-generate-preview-06-06'
+  | 'imagen-3.0-generate-002'
+  | 'imagen-3.0-generate-001'
+  | 'imagen-3.0-fast-generate-001'
+  | (string & {});
 export type ImagenAspectRatio = '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
 
 export interface ImagenOptions {

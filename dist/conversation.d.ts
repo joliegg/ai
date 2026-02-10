@@ -1,23 +1,32 @@
-import { Message, Response, Chunk, CompletionOptions, StreamOptions, ConversationOptions, AIProvider } from './types';
+import { Message, MessageContent, Response, Chunk, ConversationOptions, ConversationJSON, AIProvider, SendContent, ConversationSendOptions, ConversationStreamOptions, ToolLoopOptions } from './types';
 export declare class Conversation {
     private provider;
     private options;
     private history;
     constructor(provider: AIProvider, options?: ConversationOptions);
+    get currentProvider(): AIProvider;
+    setProvider(provider: AIProvider): void;
+    private addAssistantResponse;
+    private resolveUserMessage;
+    private resolveProvider;
     /**
      * Send a message and get a response
      */
-    send(content: string | Message, options?: Partial<CompletionOptions>): Promise<Response>;
+    send(content: SendContent, options?: Partial<ConversationSendOptions>): Promise<Response>;
     /**
      * Send a message and stream the response
      */
-    sendStream(content: string | Message, options?: Partial<StreamOptions>): AsyncIterable<Chunk>;
+    sendStream(content: SendContent, options?: Partial<ConversationStreamOptions>): AsyncIterable<Chunk>;
     /**
      * Add a tool result to the conversation
      */
-    addToolResult(toolUseId: string, result: string): void;
+    addToolResult(toolUseId: string, result: string, name?: string): void;
     /**
-     * Get the current conversation history
+     * Run an automated tool loop: send, handle tool calls, repeat until done
+     */
+    runToolLoop(content: SendContent, options: ToolLoopOptions): Promise<Response>;
+    /**
+     * Get the current conversation history (deep cloned)
      */
     getHistory(): Message[];
     /**
@@ -41,7 +50,27 @@ export declare class Conversation {
      */
     undo(): void;
     /**
-     * Trim history to maxHistory if configured
+     * Edit a message at a specific index and truncate history after it
+     */
+    editMessage(index: number, newContent: MessageContent | MessageContent[]): void;
+    /**
+     * Serialize the conversation to JSON
+     */
+    toJSON(): ConversationJSON;
+    /**
+     * Restore a conversation from JSON
+     */
+    static fromJSON(provider: AIProvider, json: ConversationJSON): Conversation;
+    /**
+     * Group non-system messages into exchanges (each starting at a user message)
+     */
+    private groupExchanges;
+    /**
+     * Estimate token count for messages
+     */
+    private estimateTokens;
+    /**
+     * Trim history using exchange-aware logic
      */
     private trimHistory;
     /**

@@ -3,8 +3,8 @@
 # Chat AI
 
 A unified TypeScript/JavaScript library for multiple AI providers including OpenAI, Anthropic Claude, Google Gemini,
-DeepSeek, Grok, Mistral, Ollama, and Stability AI for chat completions, streaming, function calling, embeddings, image
-generation, and video generation.
+DeepSeek, Grok, Mistral, Ollama, Qwen, Kimi, and Stability AI for chat completions, streaming, function calling,
+embeddings, image generation, and video generation.
 
 ## Features
 
@@ -20,7 +20,8 @@ generation, and video generation.
 - **Audio Output** - Speech-to-text (Whisper) and text-to-speech
 - **Document Input** - Process PDFs and documents in chat
 - **Realtime API** - Bidirectional audio streaming for voice apps
-- **Conversation Manager** - Multi-turn chat with history management
+- **Reasoning/Thinking** - Extended thinking for Claude, reasoning effort for OpenAI o-series
+- **Conversation Manager** - Multi-turn chat with history, serialization, editing, token-aware trimming, provider switching, and automated tool loops
 - **Batch Processing** - Process multiple requests in parallel
 - **Content Moderation** - Check content for policy violations
 - **File Management** - Upload and manage files
@@ -44,7 +45,7 @@ yarn add @joliegg/ai
 ## Quick Start
 
 ```typescript
-import { ChatGPT, Claude, Gemini, DeepSeek, Grok, Mistral, Ollama, Dream, configure } from '@joliegg/ai';
+import { ChatGPT, Claude, Gemini, DeepSeek, Grok, Mistral, Ollama, Qwen, Kimi, Dream, configure } from '@joliegg/ai';
 
 // Optional: Configure global settings
 configure({
@@ -59,6 +60,8 @@ const claude = new Claude(); // Uses ANTHROPIC_API_KEY or CLAUDE_API_KEY
 const gemini = new Gemini(); // Uses GOOGLE_API_KEY or GEMINI_API_KEY
 const mistral = new Mistral(); // Uses MISTRAL_API_KEY
 const ollama = new Ollama(); // Uses local Ollama (no key needed)
+const qwen = new Qwen(); // Uses DASHSCOPE_API_KEY
+const kimi = new Kimi(); // Uses MOONSHOT_API_KEY
 
 // Or pass API keys explicitly
 const chatGPT2 = new ChatGPT('your-openai-api-key');
@@ -181,6 +184,39 @@ console.log(geminiEmbed.embeddings); // [[...], [...]]
 // Mistral embeddings
 const mistral = new Mistral();
 const mistralEmbed = await mistral.embed('Hello world');
+```
+
+## Reasoning / Extended Thinking
+
+Enable advanced reasoning for supported models:
+
+```typescript
+import { ChatGPT, Claude, DeepSeek } from '@joliegg/ai';
+
+// OpenAI o-series reasoning effort
+const chatGPT = new ChatGPT();
+const response = await chatGPT.complete(
+  [{ role: 'user', content: 'Prove that the square root of 2 is irrational.' }],
+  {
+    model: 'o3-mini',
+    reasoning: { effort: 'high' }, // 'low', 'medium', or 'high'
+  }
+);
+
+// Claude extended thinking with token budget
+const claude = new Claude();
+const response2 = await claude.complete(
+  [{ role: 'user', content: 'Solve this step by step: ...' }],
+  {
+    reasoning: { budget: 2000 }, // budget_tokens for thinking
+  }
+);
+
+// DeepSeek reasoner (default model is deepseek-reasoner)
+const deepSeek = new DeepSeek();
+const response3 = await deepSeek.complete(
+  [{ role: 'user', content: 'Explain the proof of Fermat\'s Last Theorem.' }]
+);
 ```
 
 ## Error Handling
@@ -383,6 +419,52 @@ for await (const chunk of ollama.stream([{ role: 'user', content: 'Tell me about
 // Embeddings (requires embedding model like nomic-embed-text)
 const embeddings = await ollama.embed('Hello world', {
   model: 'nomic-embed-text',
+});
+```
+
+### Qwen
+
+```typescript
+import { Qwen } from '@joliegg/ai';
+
+const qwen = new Qwen('your-dashscope-api-key');
+
+// Chat completion
+const response = await qwen.complete([{ role: 'user', content: 'Explain distributed systems' }], {
+  model: 'qwen-plus', // or 'qwen3-max', 'qwen-turbo', 'qwen-flash', 'qwq-plus'
+});
+
+// Streaming
+for await (const chunk of qwen.stream([{ role: 'user', content: 'Write a poem' }])) {
+  process.stdout.write(chunk.delta.content || '');
+}
+
+// Embeddings
+const embeddings = await qwen.embed('Hello world', {
+  model: 'text-embedding-v4',
+});
+```
+
+### Kimi
+
+```typescript
+import { Kimi } from '@joliegg/ai';
+
+const kimi = new Kimi('your-moonshot-api-key');
+
+// Chat completion
+const response = await kimi.complete([{ role: 'user', content: 'What is quantum entanglement?' }], {
+  model: 'kimi-k2.5',
+});
+
+// Streaming
+for await (const chunk of kimi.stream([{ role: 'user', content: 'Tell me a story' }])) {
+  process.stdout.write(chunk.delta.content || '');
+}
+
+// Reasoning models
+const response2 = await kimi.complete([{ role: 'user', content: 'Solve this math problem step by step' }], {
+  model: 'kimi-k2-thinking',
 });
 ```
 
@@ -847,10 +929,11 @@ fs.writeFileSync('output.mp3', audioBuffer);
 
 ## Conversation Manager
 
-Manage multi-turn conversations with automatic history:
+Manage multi-turn conversations with automatic history, serialization, editing, and token-aware trimming:
 
 ```typescript
-import { ChatGPT } from '@joliegg/ai';
+import { ChatGPT, Conversation } from '@joliegg/ai';
+import type { ConversationJSON } from '@joliegg/ai';
 
 const chatGPT = new ChatGPT();
 
@@ -858,7 +941,8 @@ const chatGPT = new ChatGPT();
 const chat = chatGPT.createConversation({
   systemPrompt: 'You are a helpful coding assistant.',
   model: 'gpt-4o',
-  maxHistory: 20, // Keep last 20 messages
+  maxHistory: 20, // Keep last 20 messages (trims by whole exchanges)
+  maxContextTokens: 8000, // Token budget for input context window
 });
 
 // Send messages - history is managed automatically
@@ -868,14 +952,17 @@ console.log(response1.content);
 const response2 = await chat.send('Can you give me an example?');
 console.log(response2.content); // Knows we're talking about recursion
 
-// Stream responses
+// Stream responses (tool calls are captured in history automatically)
 for await (const chunk of chat.sendStream('Write a recursive factorial function')) {
   process.stdout.write(chunk.delta.content || '');
 }
 
+// Error rollback: if send() or sendStream() fails, the user message
+// is automatically removed from history so you can retry safely.
+
 // Conversation utilities
-console.log(chat.length); // Number of messages
-console.log(chat.getHistory()); // Get full history
+console.log(chat.length); // Number of messages (excluding system)
+console.log(chat.getHistory()); // Get full history (deep cloned)
 
 chat.undo(); // Remove last exchange
 chat.clear(); // Clear history (keeps system prompt)
@@ -885,9 +972,142 @@ chat.reset('New system prompt'); // Start fresh
 const branch = chat.fork();
 await branch.send('What about iteration instead?');
 
+// Edit a message and truncate history after it
+chat.editMessage(1, 'Actually, explain it differently');
+await chat.send('Actually, explain it differently'); // Continue from edited point
+
+// Serialize / restore conversations
+const json: ConversationJSON = chat.toJSON();
+// Save to file, database, etc.
+
+const restored = Conversation.fromJSON(chatGPT, json);
+await restored.send('Continue where we left off');
+
 // Summarize old messages to save tokens
 await chat.summarize(4); // Keep last 4 messages, summarize the rest
 ```
+
+### Ergonomic Multimodal Input
+
+`send()` and `sendStream()` accept flexible input types — no need to manually wrap content in `Message` objects:
+
+```typescript
+import { ChatGPT, imageFromURL, text, createConversation } from '@joliegg/ai';
+
+const chat = createConversation(new ChatGPT());
+
+// Plain string (as before)
+await chat.send('Hello');
+
+// A full Message object (as before)
+await chat.send({ role: 'user', content: 'Hello' });
+
+// A single MessageContent object — automatically wrapped as a user message
+await chat.send({ type: 'image', source: { type: 'url', data: 'https://example.com/photo.jpg' } });
+
+// An array of MessageContent parts — automatically wrapped as a user message
+await chat.send([
+  text('Describe this image:'),
+  imageFromURL('https://example.com/photo.jpg'),
+]);
+
+// Works with streaming too
+for await (const chunk of chat.sendStream([
+  text('What do you see?'),
+  imageFromURL('https://example.com/photo.jpg'),
+])) {
+  process.stdout.write(chunk.delta.content || '');
+}
+```
+
+### Provider Switching
+
+Switch providers mid-conversation for multi-agent workflows or cost optimization:
+
+```typescript
+import { ChatGPT, Claude, Gemini, createConversation } from '@joliegg/ai';
+
+const chatGPT = new ChatGPT();
+const claude = new Claude();
+const gemini = new Gemini();
+
+const chat = createConversation(chatGPT);
+
+// Check current provider
+console.log(chat.currentProvider); // ChatGPT instance
+
+// Permanently switch provider
+chat.setProvider(claude);
+await chat.send('Now using Claude'); // Uses Claude
+
+// Per-call override (does NOT change the permanent provider)
+await chat.send('One-off with Gemini', { provider: gemini });
+console.log(chat.currentProvider); // Still Claude
+
+// Works with streaming too
+for await (const chunk of chat.sendStream('Stream from GPT', { provider: chatGPT })) {
+  process.stdout.write(chunk.delta.content || '');
+}
+
+// fork() copies the current provider
+chat.setProvider(gemini);
+const forked = chat.fork();
+console.log(forked.currentProvider); // Gemini
+```
+
+### Automated Tool Loop
+
+Run multi-turn tool-call loops automatically with `runToolLoop()`:
+
+```typescript
+import { ChatGPT, createConversation } from '@joliegg/ai';
+import type { ToolCall } from '@joliegg/ai';
+
+const chat = createConversation(new ChatGPT());
+
+const response = await chat.runToolLoop('What is the weather in NYC and SF?', {
+  // Provide a handler that executes tool calls and returns results
+  toolHandler: async (toolCall: ToolCall) => {
+    if (toolCall.name === 'get_weather') {
+      const city = toolCall.arguments.city as string;
+      return `${city}: Sunny, 72°F`;
+    }
+    return 'Unknown tool';
+  },
+  maxIterations: 10, // Default: 10. Limits loop rounds to prevent runaway.
+  // All standard completion options are supported:
+  tools: [
+    {
+      name: 'get_weather',
+      description: 'Get weather for a city',
+      parameters: {
+        type: 'object',
+        properties: { city: { type: 'string' } },
+        required: ['city'],
+      },
+    },
+  ],
+  // Per-call provider override works here too:
+  // provider: someOtherProvider,
+});
+
+// response is the final Response after all tool calls are resolved
+console.log(response.content); // "NYC is sunny at 72°F and SF is..."
+
+// History contains the full trace: user → assistant(tool_calls) → tool → ... → assistant(final)
+console.log(chat.getHistory());
+```
+
+### Conversation Options
+
+| Option            | Type   | Description                                              |
+| ----------------- | ------ | -------------------------------------------------------- |
+| `systemPrompt`    | string | System prompt for the conversation                       |
+| `model`           | string | Default model to use                                     |
+| `maxTokens`       | number | Default max output tokens                                |
+| `temperature`     | number | Default temperature                                      |
+| `maxHistory`      | number | Max non-system messages (trims oldest exchanges first)   |
+| `maxContextTokens`| number | Token budget for input context (trims oldest exchanges)  |
 
 ## Batch Processing
 
@@ -1138,6 +1358,12 @@ import type {
 
   // Conversation types
   ConversationOptions,
+  ConversationJSON,
+  SendContent,
+  ToolHandler,
+  ToolLoopOptions,
+  ConversationSendOptions,
+  ConversationStreamOptions,
 
   // Token counting
   TokenCountResult,
@@ -1157,13 +1383,15 @@ import type {
 
 | Provider | Models                                                                              |
 | -------- | ----------------------------------------------------------------------------------- |
-| OpenAI   | `gpt-4o` (default), `gpt-4o-mini`, `gpt-4-turbo`, `gpt-3.5-turbo`                   |
-| Claude   | `claude-opus-4-20250514` (default), `claude-sonnet-4-0`, `claude-3-5-sonnet-latest` |
+| OpenAI   | `gpt-5.2` (default), `gpt-4o`, `gpt-4o-mini`, `o3-mini`, `o1-preview`              |
+| Claude   | `claude-sonnet-4-5-20250929` (default), `claude-opus-4-20250514`, `claude-sonnet-4-0` |
 | Gemini   | `gemini-2.5-pro` (default), `gemini-2.0-pro`, `gemini-1.5-pro`                      |
-| DeepSeek | `deepseek-chat` (default), `deepseek-coder`                                         |
-| Grok     | `grok-4` (default)                                                                  |
+| DeepSeek | `deepseek-reasoner` (default), `deepseek-chat`, `deepseek-coder`                    |
+| Grok     | `grok-4-1-fast-reasoning` (default), `grok-4`, `grok-4-1-fast-non-reasoning`       |
 | Mistral  | `mistral-large-latest` (default), `mistral-medium`, `mistral-small`                 |
 | Ollama   | `llama3.2` (default), any pulled model                                              |
+| Qwen     | `qwen-plus` (default), `qwen3-max`, `qwen-turbo`, `qwen-flash`, `qwq-plus`        |
+| Kimi     | `kimi-k2.5` (default), `kimi-k2-thinking`, `kimi-k2-thinking-turbo`                |
 
 ### Image Models
 
@@ -1179,9 +1407,11 @@ import type {
 | Provider | Models                                                       |
 | -------- | ------------------------------------------------------------ |
 | OpenAI   | `text-embedding-3-small` (default), `text-embedding-3-large` |
-| Gemini   | `text-embedding-004` (default)                               |
+| Gemini   | `gemini-embedding-001` (default)                             |
 | Mistral  | `mistral-embed` (default)                                    |
+| DeepSeek | `deepseek-embedding-v2` (default)                            |
 | Ollama   | `nomic-embed-text` (default)                                 |
+| Qwen     | `text-embedding-v4` (default), `text-embedding-v3`           |
 
 ### Audio Models
 
@@ -1209,6 +1439,8 @@ The library auto-detects API keys from these environment variables:
 | Grok     | `GROK_API_KEY`                                          |
 | Mistral  | `MISTRAL_API_KEY`                                       |
 | Ollama   | `OLLAMA_HOST` (optional, defaults to `localhost:11434`) |
+| Qwen     | `DASHSCOPE_API_KEY`                                     |
+| Kimi     | `MOONSHOT_API_KEY`                                      |
 
 ## License
 

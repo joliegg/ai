@@ -54,9 +54,6 @@ class ChatGPT extends base_openai_1.BaseOpenAI {
         const resolvedApiKey = apiKey || process.env.OPENAI_API_KEY;
         super(resolvedApiKey, undefined, config);
     }
-    get provider() {
-        return this._provider;
-    }
     async generate(options) {
         const { n, size, model, quality } = options;
         if (!this._client) {
@@ -325,9 +322,9 @@ class ChatGPT extends base_openai_1.BaseOpenAI {
             completion: id.includes('gpt-3.5') || id.includes('davinci'),
             embedding: id.includes('embedding'),
             image: id.includes('dall-e') || id.includes('gpt-image'),
-            audio: id.includes('whisper') || id.includes('tts'),
-            vision: id.includes('gpt-4') || id.includes('gpt-5.2') || id.includes('o1') || id.includes('o3'),
-            functionCalling: id.includes('gpt-4') || id.includes('gpt-3.5-turbo') || id.includes('o3'),
+            audio: id.includes('whisper') || id.includes('tts') || id.includes('transcribe'),
+            vision: id.includes('gpt-4') || id.includes('gpt-5') || id.includes('o1') || id.includes('o3') || id.includes('o4'),
+            functionCalling: id.includes('gpt-4') || id.includes('gpt-5') || id.includes('gpt-3.5-turbo') || id.includes('o3') || id.includes('o4'),
         };
     }
     /**
@@ -588,7 +585,7 @@ class RealtimeSession {
     constructor(apiKey, config = {}) {
         this.apiKey = apiKey;
         this.config = {
-            model: config.model || 'gpt-4o-realtime-preview',
+            model: config.model || 'gpt-realtime',
             voice: config.voice || 'alloy',
             inputAudioFormat: config.inputAudioFormat || 'pcm16',
             outputAudioFormat: config.outputAudioFormat || 'pcm16',
@@ -636,8 +633,8 @@ class RealtimeSession {
                     this.emit(event.type, event);
                     this.emit('*', event); // Wildcard handler
                 }
-                catch {
-                    // Ignore parse errors
+                catch (err) {
+                    this.emit('error', { type: 'error', error: err });
                 }
             });
             this.ws.on('error', (error) => {

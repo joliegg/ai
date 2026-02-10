@@ -1,7 +1,8 @@
 import { BaseOpenAI } from './base-openai';
 import { ProviderConfig } from './types';
 
-export type MODEL = 'deepseek-chat' | 'deepseek-reasoner' | 'deepseek-coder' | (string & {});
+export type MODEL = 'deepseek-chat' | 'deepseek-reasoner' | (string & {});
+export type EMBEDDING_MODEL = 'deepseek-embedding-v2' | (string & {});
 
 class DeepSeek extends BaseOpenAI {
   protected readonly _provider = 'deepseek';
@@ -11,12 +12,12 @@ class DeepSeek extends BaseOpenAI {
     super(resolvedApiKey, 'https://api.deepseek.com', config);
   }
 
-  get provider(): string {
-    return this._provider;
-  }
-
   protected defaultModel(): MODEL {
     return 'deepseek-reasoner';
+  }
+
+  protected defaultEmbeddingModel(): EMBEDDING_MODEL {
+    return 'deepseek-embedding-v2';
   }
 }
 

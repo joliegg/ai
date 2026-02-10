@@ -64,14 +64,6 @@ export async function withRetry<T>(fn: () => Promise<T>, provider: string, optio
   throw lastError || new AIError('Unknown error', provider);
 }
 
-export function createTimeout(ms: number, provider: string): Promise<never> {
-  return new Promise((_, reject) => {
-    setTimeout(() => {
-      reject(new AIError(`Request timed out after ${ms}ms`, provider, 'TIMEOUT', 408));
-    }, ms);
-  });
-}
-
 /**
  * Execute a function with a timeout
  */
@@ -80,7 +72,18 @@ export async function withTimeout<T>(fn: () => Promise<T>, timeout: number, prov
     return fn();
   }
 
-  return Promise.race([fn(), createTimeout(timeout, provider)]);
+  let timer: ReturnType<typeof setTimeout>;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new AIError(`Request timed out after ${timeout}ms`, provider, 'TIMEOUT', 408));
+    }, timeout);
+  });
+
+  try {
+    return await Promise.race([fn(), timeoutPromise]);
+  } finally {
+    clearTimeout(timer!);
+  }
 }
 
 /**
@@ -123,7 +126,7 @@ export function generateId(prefix: string = 'msg'): string {
  * Deep clone an object
  */
 export function deepClone<T>(obj: T): T {
-  return JSON.parse(JSON.stringify(obj));
+  return structuredClone(obj);
 }
 
 /**

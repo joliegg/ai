@@ -1,3 +1,6 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
 import {
   ImageContent,
   AudioContent,
@@ -7,8 +10,6 @@ import {
   MessageContent,
   Message,
 } from './types';
-import * as fs from 'fs';
-import * as path from 'path';
 
 /**
  * Create an image content block from a base64 string

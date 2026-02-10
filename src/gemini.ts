@@ -19,6 +19,9 @@ import {
 import { AIError } from './errors';
 import { withRetry, withTimeout, generateId } from './utils';
 
+export type MODEL = 'gemini-3-pro-preview' | 'gemini-3-pro-image-preview' | 'gemini-2.5-pro' | 'gemini-2.5-flash' | 'gemini-2.5-flash-lite' | 'gemini-2.0-flash' | 'gemini-2.0-flash-lite' | (string & {});
+export type EMBEDDING_MODEL = 'gemini-embedding-001' | 'text-embedding-004' | (string & {});
+
 class Gemini {
   private _client: GoogleGenAI;
   private _config: ProviderConfig;
@@ -56,7 +59,7 @@ class Gemini {
    * Generate a chat completion
    */
   async complete(messages: Message[], options: CompletionOptions = {}): Promise<Response> {
-    const model = options.model || 'gemini-3.0-pro';
+    const model = options.model || 'gemini-2.5-pro';
     const { systemInstruction, contents } = this.convertToGeminiMessages(messages);
 
     const fn = async (): Promise<Response> => {
@@ -132,7 +135,7 @@ class Gemini {
    * Stream completions
    */
   async *stream(messages: Message[], options: StreamOptions = {}): AsyncIterable<Chunk> {
-    const model = options.model || 'gemini-3.0-pro';
+    const model = options.model || 'gemini-2.5-pro';
     const { systemInstruction, contents } = this.convertToGeminiMessages(messages);
 
     const config: GenerateContentConfig = {};
@@ -244,22 +247,23 @@ class Gemini {
    * Generate embeddings
    */
   async embed(input: string | string[], options: EmbeddingOptions = {}): Promise<EmbeddingResponse> {
-    const model = options.model || 'text-embedding-004';
+    const model = options.model || 'gemini-embedding-001';
     const inputArray = Array.isArray(input) ? input : [input];
 
     const fn = async (): Promise<EmbeddingResponse> => {
-      const embeddings: number[][] = [];
+      // Parallelize individual embedding requests
+      const results = await Promise.all(
+        inputArray.map((text) =>
+          this._client.models.embedContent({
+            model,
+            contents: text,
+          })
+        )
+      );
 
-      // Gemini requires individual embedding requests
-      for (const text of inputArray) {
-        const result = await this._client.models.embedContent({
-          model,
-          contents: text,
-        });
-        if (result.embeddings && result.embeddings.length > 0) {
-          embeddings.push(result.embeddings[0].values || []);
-        }
-      }
+      const embeddings: number[][] = results
+        .filter((result) => result.embeddings && result.embeddings.length > 0)
+        .map((result) => result.embeddings![0].values || []);
 
       return {
         embeddings,
@@ -281,7 +285,7 @@ class Gemini {
    * @returns Generated images as buffers
    */
   async generateImage(options: ImagenOptions): Promise<ImagenResponse> {
-    const model = options.model || 'imagen-4.0-generate-001';
+    const model = options.model || 'imagen-4.0-generate-preview-06-06';
 
     const fn = async (): Promise<ImagenResponse> => {
       // Build the config
@@ -404,7 +408,7 @@ class Gemini {
           } else if (part.type === 'tool_result') {
             parts.push({
               functionResponse: {
-                name: part.toolUseId, // Gemini uses name for function responses
+                name: part.name || part.toolUseId,
                 response: { result: part.content },
               },
             });
@@ -417,7 +421,7 @@ class Gemini {
         } else if (content.type === 'tool_result') {
           parts.push({
             functionResponse: {
-              name: content.toolUseId,
+              name: content.name || content.toolUseId,
               response: { result: content.content },
             },
           });

@@ -5,7 +5,9 @@ export type Size = '1024x1024' | '1024x1792' | '1792x1024' | '256x256' | '512x51
 export type Quality = 'auto' | 'low' | 'medium' | 'high' | 'standard' | 'hd';
 export type OutputFormat = 'png' | 'jpeg' | 'webp';
 export type Background = 'transparent' | 'opaque' | 'auto';
-export type ImageGenerationModel = 'gpt-image-1.5' | 'gpt-image-1' | 'dall-e-3' | 'dall-e-2';
+export type MODEL = 'gpt-5.2' | 'gpt-5.1' | 'gpt-5' | 'gpt-5-mini' | 'gpt-5-nano' | 'gpt-5.2-pro' | 'gpt-5-pro' | 'o3' | 'o3-mini' | 'o3-pro' | 'o4-mini' | 'o1' | 'o1-pro' | 'gpt-4.1' | 'gpt-4.1-mini' | 'gpt-4.1-nano' | 'gpt-4o' | 'gpt-4o-mini' | (string & {});
+export type EMBEDDING_MODEL = 'text-embedding-3-large' | 'text-embedding-3-small' | 'text-embedding-ada-002' | (string & {});
+export type ImageGenerationModel = 'gpt-image-1.5' | 'chatgpt-image-latest' | 'gpt-image-1' | 'gpt-image-1-mini' | 'dall-e-3' | 'dall-e-2';
 export interface GenerateOptions {
     prompt: string;
     n: number;
@@ -18,7 +20,6 @@ export interface GenerateOptions {
 declare class ChatGPT extends BaseOpenAI {
     protected readonly _provider = "openai";
     constructor(apiKey?: string, config?: Partial<ProviderConfig>);
-    get provider(): string;
     generate(options: GenerateOptions): Promise<Buffer[]>;
     /**
      * Create a realtime session for bidirectional audio streaming
@@ -142,7 +143,7 @@ declare class ChatGPT extends BaseOpenAI {
      * @returns Video buffer
      */
     generateVideoBuffer(options: VideoGenerationOptions, pollInterval?: number, timeout?: number): Promise<Buffer>;
-    protected defaultModel(): string;
+    protected defaultModel(): MODEL;
 }
 /**
  * RealtimeSession - Manages bidirectional audio streaming with OpenAI

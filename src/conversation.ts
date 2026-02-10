@@ -1,4 +1,5 @@
-import { Message, Response, Chunk, CompletionOptions, StreamOptions, ConversationOptions, AIProvider } from './types';
+import { Message, MessageContent, Response, Chunk, ToolCall, ConversationOptions, ConversationJSON, AIProvider, SendContent, ConversationSendOptions, ConversationStreamOptions, ToolLoopOptions } from './types';
+import { deepClone } from './utils';
 
 export class Conversation {
   private provider: AIProvider;
@@ -18,45 +19,71 @@ export class Conversation {
     }
   }
 
+  get currentProvider(): AIProvider { return this.provider; }
+
+  setProvider(provider: AIProvider): void { this.provider = provider; }
+
+  private addAssistantResponse(content: string | null, toolCalls: ToolCall[]): void {
+    if (!content && toolCalls.length === 0) return;
+
+    const contentParts: MessageContent[] = [];
+
+    if (content) {
+      contentParts.push({ type: 'text' as const, text: content });
+    }
+
+    for (const tc of toolCalls) {
+      contentParts.push({
+        type: 'tool_use' as const,
+        id: tc.id,
+        name: tc.name,
+        input: tc.arguments,
+      });
+    }
+
+    this.history.push({
+      role: 'assistant',
+      content: contentParts.length === 1 && typeof contentParts[0] !== 'string' && contentParts[0].type === 'text'
+        ? contentParts[0].text
+        : contentParts,
+    });
+  }
+
+  private resolveUserMessage(content: SendContent): Message {
+    if (typeof content === 'string') return { role: 'user', content };
+    if (Array.isArray(content)) return { role: 'user', content };
+    if ('role' in content) return content as Message;
+    return { role: 'user', content: content as MessageContent };
+  }
+
+  private resolveProvider(options?: { provider?: AIProvider }): AIProvider {
+    return options?.provider ?? this.provider;
+  }
+
   /**
    * Send a message and get a response
    */
-  async send(content: string | Message, options: Partial<CompletionOptions> = {}): Promise<Response> {
-    // Add user message
-    const userMessage: Message = typeof content === 'string' ? { role: 'user', content } : content;
+  async send(content: SendContent, options: Partial<ConversationSendOptions> = {}): Promise<Response> {
+    const { provider: providerOverride, ...completionOptions } = options;
+    const activeProvider = this.resolveProvider({ provider: providerOverride });
+    const userMessage = this.resolveUserMessage(content);
 
     this.history.push(userMessage);
 
-    // Get completion
-    const response = await this.provider.complete(this.history, {
-      model: this.options.model,
-      maxTokens: this.options.maxTokens,
-      temperature: this.options.temperature,
-      ...options,
-    });
-
-    // Add assistant response to history
-    if (response.content) {
-      this.history.push({
-        role: 'assistant',
-        content: response.content,
+    let response: Response;
+    try {
+      response = await activeProvider.complete(this.history, {
+        model: this.options.model,
+        maxTokens: this.options.maxTokens,
+        temperature: this.options.temperature,
+        ...completionOptions,
       });
+    } catch (error) {
+      this.history.pop();
+      throw error;
     }
 
-    // Handle tool calls
-    if (response.toolCalls && response.toolCalls.length > 0) {
-      this.history.push({
-        role: 'assistant',
-        content: response.toolCalls.map((tc) => ({
-          type: 'tool_use' as const,
-          id: tc.id,
-          name: tc.name,
-          input: tc.arguments,
-        })),
-      });
-    }
-
-    // Trim history if needed
+    this.addAssistantResponse(response.content, response.toolCalls ?? []);
     this.trimHistory();
 
     return response;
@@ -65,48 +92,50 @@ export class Conversation {
   /**
    * Send a message and stream the response
    */
-  async *sendStream(content: string | Message, options: Partial<StreamOptions> = {}): AsyncIterable<Chunk> {
-    if (!this.provider.stream) {
-      throw new Error(`Provider ${this.provider.provider} does not support streaming`);
+  async *sendStream(content: SendContent, options: Partial<ConversationStreamOptions> = {}): AsyncIterable<Chunk> {
+    const { provider: providerOverride, ...streamOptions } = options;
+    const activeProvider = this.resolveProvider({ provider: providerOverride });
+
+    if (!activeProvider.stream) {
+      throw new Error(`Provider ${activeProvider.provider} does not support streaming`);
     }
 
-    // Add user message
-    const userMessage: Message = typeof content === 'string' ? { role: 'user', content } : content;
-
+    const userMessage = this.resolveUserMessage(content);
     this.history.push(userMessage);
 
-    // Collect response content for history
     let responseContent = '';
-
-    // Stream completion
-    for await (const chunk of this.provider.stream(this.history, {
+    const completedToolCalls: ToolCall[] = [];
+    const mergedOptions = {
       model: this.options.model,
       maxTokens: this.options.maxTokens,
       temperature: this.options.temperature,
-      ...options,
-    })) {
-      if (chunk.delta.content) {
-        responseContent += chunk.delta.content;
+      ...streamOptions,
+      onToolCall: (toolCall: ToolCall) => {
+        completedToolCalls.push(toolCall);
+        streamOptions.onToolCall?.(toolCall);
+      },
+    };
+
+    try {
+      for await (const chunk of activeProvider.stream(this.history, mergedOptions)) {
+        if (chunk.delta.content) {
+          responseContent += chunk.delta.content;
+        }
+        yield chunk;
       }
-      yield chunk;
+    } catch (error) {
+      this.history.pop();
+      throw error;
     }
 
-    // Add assistant response to history
-    if (responseContent) {
-      this.history.push({
-        role: 'assistant',
-        content: responseContent,
-      });
-    }
-
-    // Trim history if needed
+    this.addAssistantResponse(responseContent || null, completedToolCalls);
     this.trimHistory();
   }
 
   /**
    * Add a tool result to the conversation
    */
-  addToolResult(toolUseId: string, result: string): void {
+  addToolResult(toolUseId: string, result: string, name?: string): void {
     this.history.push({
       role: 'tool',
       content: [
@@ -114,16 +143,56 @@ export class Conversation {
           type: 'tool_result',
           toolUseId,
           content: result,
+          ...(name ? { name } : {}),
         },
       ],
     });
   }
 
   /**
-   * Get the current conversation history
+   * Run an automated tool loop: send, handle tool calls, repeat until done
+   */
+  async runToolLoop(content: SendContent, options: ToolLoopOptions): Promise<Response> {
+    const { toolHandler, maxIterations = 10, ...sendOptions } = options;
+    const { provider: providerOverride, ...completionOptions } = sendOptions;
+    const activeProvider = this.resolveProvider({ provider: providerOverride });
+
+    let response = await this.send(content, { provider: activeProvider, ...completionOptions });
+    let iterations = 0;
+
+    while (
+      response.finishReason === 'tool_calls' &&
+      response.toolCalls &&
+      response.toolCalls.length > 0 &&
+      iterations < maxIterations
+    ) {
+      // Execute each tool call and add results
+      for (const tc of response.toolCalls) {
+        const result = await toolHandler(tc);
+        this.addToolResult(tc.id, result, tc.name);
+      }
+
+      // Continue the conversation (no new user message)
+      response = await activeProvider.complete(this.history, {
+        model: this.options.model,
+        maxTokens: this.options.maxTokens,
+        temperature: this.options.temperature,
+        ...completionOptions,
+      });
+      this.addAssistantResponse(response.content, response.toolCalls ?? []);
+      this.trimHistory();
+
+      iterations++;
+    }
+
+    return response;
+  }
+
+  /**
+   * Get the current conversation history (deep cloned)
    */
   getHistory(): Message[] {
-    return [...this.history];
+    return deepClone(this.history);
   }
 
   /**
@@ -159,7 +228,7 @@ export class Conversation {
    */
   fork(): Conversation {
     const forked = new Conversation(this.provider, this.options);
-    forked.history = [...this.history];
+    forked.history = structuredClone(this.history);
     return forked;
   }
 
@@ -177,19 +246,134 @@ export class Conversation {
   }
 
   /**
-   * Trim history to maxHistory if configured
+   * Edit a message at a specific index and truncate history after it
+   */
+  editMessage(index: number, newContent: MessageContent | MessageContent[]): void {
+    if (index < 0 || index >= this.history.length) {
+      throw new Error(`Index ${index} is out of bounds (history length: ${this.history.length})`);
+    }
+
+    if (this.history[index].role === 'system') {
+      throw new Error('Cannot edit system messages. Use reset() to change the system prompt.');
+    }
+
+    this.history[index] = {
+      ...this.history[index],
+      content: newContent,
+    };
+
+    // Truncate everything after the edited message
+    this.history = this.history.slice(0, index + 1);
+  }
+
+  /**
+   * Serialize the conversation to JSON
+   */
+  toJSON(): ConversationJSON {
+    return {
+      version: 1,
+      options: deepClone(this.options),
+      history: deepClone(this.history),
+    };
+  }
+
+  /**
+   * Restore a conversation from JSON
+   */
+  static fromJSON(provider: AIProvider, json: ConversationJSON): Conversation {
+    if (json.version !== 1) {
+      throw new Error(`Unsupported conversation version: ${json.version}`);
+    }
+
+    const conversation = new Conversation(provider, json.options);
+    // Overwrite history directly (serialized history already contains system prompt)
+    conversation.history = deepClone(json.history);
+    return conversation;
+  }
+
+  /**
+   * Group non-system messages into exchanges (each starting at a user message)
+   */
+  private groupExchanges(messages: Message[]): Message[][] {
+    const exchanges: Message[][] = [];
+    let current: Message[] = [];
+
+    for (const msg of messages) {
+      if (msg.role === 'user' && current.length > 0) {
+        exchanges.push(current);
+        current = [];
+      }
+      current.push(msg);
+    }
+
+    if (current.length > 0) {
+      exchanges.push(current);
+    }
+
+    return exchanges;
+  }
+
+  /**
+   * Estimate token count for messages
+   */
+  private estimateTokens(messages: Message[]): number {
+    let chars = 0;
+
+    for (const msg of messages) {
+      chars += 4; // role/formatting overhead per message
+
+      if (typeof msg.content === 'string') {
+        chars += msg.content.length;
+      } else if (Array.isArray(msg.content)) {
+        for (const part of msg.content) {
+          if (typeof part === 'string') {
+            chars += part.length;
+          } else if (part.type === 'text') {
+            chars += part.text.length;
+          } else if (part.type === 'tool_result') {
+            chars += part.content.length;
+          }
+          // Multimodal content (images/audio/video) not counted
+        }
+      }
+    }
+
+    return Math.ceil(chars / 4) + 3; // divide by 4 + chat format overhead
+  }
+
+  /**
+   * Trim history using exchange-aware logic
    */
   private trimHistory(): void {
-    if (!this.options.maxHistory) return;
+    if (!this.options.maxHistory && !this.options.maxContextTokens) return;
 
     const systemMessages = this.history.filter((m) => m.role === 'system');
     const nonSystemMessages = this.history.filter((m) => m.role !== 'system');
 
-    if (nonSystemMessages.length > this.options.maxHistory) {
-      // Keep the most recent messages
-      const trimmed = nonSystemMessages.slice(-this.options.maxHistory);
-      this.history = [...systemMessages, ...trimmed];
+    const exchanges = this.groupExchanges(nonSystemMessages);
+
+    // Phase 1: maxHistory - trim by message count
+    if (this.options.maxHistory) {
+      while (exchanges.length > 1) {
+        const totalMessages = exchanges.reduce((sum, ex) => sum + ex.length, 0);
+        if (totalMessages <= this.options.maxHistory) break;
+        exchanges.shift();
+      }
     }
+
+    // Phase 2: maxContextTokens - trim by token budget
+    if (this.options.maxContextTokens) {
+      const systemTokens = this.estimateTokens(systemMessages);
+      while (exchanges.length > 1) {
+        const remainingMessages = exchanges.flat();
+        const totalTokens = systemTokens + this.estimateTokens(remainingMessages);
+        if (totalTokens <= this.options.maxContextTokens) break;
+        exchanges.shift();
+      }
+    }
+
+    // Rebuild history
+    this.history = [...systemMessages, ...exchanges.flat()];
   }
 
   /**

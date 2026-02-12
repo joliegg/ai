@@ -260,6 +260,17 @@ describe('ChatGPT Unit Tests', () => {
       maxTokens: 500,
     });
     assert.strictEqual(mockClient.lastChatParams.model, 'gpt-4o-mini');
+    assert.strictEqual(mockClient.lastChatParams.max_tokens, 500);
+    assert.strictEqual(mockClient.lastChatParams.max_completion_tokens, undefined);
+  });
+
+  it('should use max_completion_tokens for GPT-5/o-series models', async () => {
+    await chatGPT.complete([{ role: 'user', content: 'Hello' }], {
+      model: 'gpt-5.2',
+      maxTokens: 600,
+    });
+    assert.strictEqual(mockClient.lastChatParams.max_completion_tokens, 600);
+    assert.strictEqual(mockClient.lastChatParams.max_tokens, undefined);
   });
 
   it('should generate image successfully with valid params', async () => {
@@ -1529,6 +1540,14 @@ describe('Reasoning Feature Tests', () => {
     it('should use deepseek-reasoner as default model', async () => {
       await deepseek.complete([{ role: 'user', content: 'Think' }]);
       assert.strictEqual(mockClient.lastChatParams.model, 'deepseek-reasoner');
+    });
+
+    it('should use max_tokens for OpenAI-compatible non-OpenAI providers', async () => {
+      await deepseek.complete([{ role: 'user', content: 'Think' }], {
+        maxTokens: 700,
+      });
+      assert.strictEqual(mockClient.lastChatParams.max_tokens, 700);
+      assert.strictEqual(mockClient.lastChatParams.max_completion_tokens, undefined);
     });
   });
 

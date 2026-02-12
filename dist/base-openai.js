@@ -42,11 +42,11 @@ class BaseOpenAI {
             const params = {
                 model,
                 messages: openAIMessages,
-                max_completion_tokens: options.maxTokens,
                 temperature: options.temperature,
                 top_p: options.topP,
                 stop: options.stop,
             };
+            this.applyTokenLimitParam(params, model, options.maxTokens);
             // Add tools if provided
             if (options.tools && options.tools.length > 0) {
                 params.tools = this.convertToOpenAITools(options.tools);
@@ -84,12 +84,12 @@ class BaseOpenAI {
         const params = {
             model,
             messages: openAIMessages,
-            max_completion_tokens: options.maxTokens,
             temperature: options.temperature,
             top_p: options.topP,
             stop: options.stop,
             stream: true,
         };
+        this.applyTokenLimitParam(params, model, options.maxTokens);
         // Add tools if provided
         if (options.tools && options.tools.length > 0) {
             params.tools = this.convertToOpenAITools(options.tools);
@@ -246,6 +246,31 @@ class BaseOpenAI {
         }
         catch {
             return {};
+        }
+    }
+    usesMaxCompletionTokens(model) {
+        if (this._provider !== 'openai') {
+            return false;
+        }
+        const normalizedModel = model.toLowerCase();
+        return (normalizedModel.startsWith('gpt-5') ||
+            normalizedModel.startsWith('o1') ||
+            normalizedModel.startsWith('o3') ||
+            normalizedModel.startsWith('o4'));
+    }
+    applyTokenLimitParam(params, model, maxTokens) {
+        if (maxTokens === undefined) {
+            return;
+        }
+        // Prefer OpenAI's required parameter for GPT-5/o-series, keep compatibility
+        // with OpenAI-compatible providers that still expect max_tokens.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mutableParams = params;
+        if (this.usesMaxCompletionTokens(model)) {
+            mutableParams.max_completion_tokens = maxTokens;
+        }
+        else {
+            mutableParams.max_tokens = maxTokens;
         }
     }
     convertToOpenAIMessages(messages) {

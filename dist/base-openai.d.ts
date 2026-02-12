@@ -31,6 +31,8 @@ export declare abstract class BaseOpenAI {
     protected defaultModel(): string;
     protected defaultEmbeddingModel(): string;
     protected safeParseJson(value: string): Record<string, unknown>;
+    protected usesMaxCompletionTokens(model: string): boolean;
+    protected applyTokenLimitParam(params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming | OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming, model: string, maxTokens: number | undefined): void;
     protected convertToOpenAIMessages(messages: Message[]): ChatCompletionMessageParam[];
     protected convertToOpenAITools(tools: ToolDefinition[]): OpenAI.Chat.Completions.ChatCompletionTool[];
     protected convertToolChoice(choice: 'auto' | 'none' | 'required' | {

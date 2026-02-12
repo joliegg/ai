@@ -78,7 +78,7 @@ async function runTest(name, fn) {
 
   await runTest('Claude completion', async () => {
     const result = await claude.complete([{ role: 'user', content: 'Describe yourself in 5 words' }], {
-      model: 'claude-3-5-sonnet-20240620',
+      model: 'claude-sonnet-4-0',
     });
     console.log('Response:', result.content);
   });
@@ -86,7 +86,7 @@ async function runTest(name, fn) {
   if (gemini) {
     await runTest('Gemini completion', async () => {
       const result = await gemini.complete([{ role: 'user', content: 'Describe yourself in 5 words' }], {
-        model: 'gemini-2.5-pro',
+        model: 'gemini-3-pro-preview',
       });
       console.log('Response:', result.content);
     });

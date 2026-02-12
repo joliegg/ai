@@ -19,7 +19,16 @@ import {
 import { AIError } from './errors';
 import { withRetry, withTimeout, generateId } from './utils';
 
-export type MODEL = 'gemini-3-pro-preview' | 'gemini-3-pro-image-preview' | 'gemini-2.5-pro' | 'gemini-2.5-flash' | 'gemini-2.5-flash-lite' | 'gemini-2.0-flash' | 'gemini-2.0-flash-lite' | (string & {});
+export type MODEL =
+  | 'gemini-3-pro-preview'
+  | 'gemini-3-pro-image-preview'
+  | 'gemini-3-flash-preview'
+  | 'gemini-2.5-pro'
+  | 'gemini-2.5-flash'
+  | 'gemini-2.5-flash-lite'
+  | 'gemini-2.0-flash'
+  | 'gemini-2.0-flash-lite'
+  | (string & {});
 export type EMBEDDING_MODEL = 'gemini-embedding-001' | 'text-embedding-004' | (string & {});
 
 class Gemini {
@@ -59,7 +68,7 @@ class Gemini {
    * Generate a chat completion
    */
   async complete(messages: Message[], options: CompletionOptions = {}): Promise<Response> {
-    const model = options.model || 'gemini-2.5-pro';
+    const model = options.model || 'gemini-3-pro-preview';
     const { systemInstruction, contents } = this.convertToGeminiMessages(messages);
 
     const fn = async (): Promise<Response> => {
@@ -135,7 +144,7 @@ class Gemini {
    * Stream completions
    */
   async *stream(messages: Message[], options: StreamOptions = {}): AsyncIterable<Chunk> {
-    const model = options.model || 'gemini-2.5-pro';
+    const model = options.model || 'gemini-3-pro-preview';
     const { systemInstruction, contents } = this.convertToGeminiMessages(messages);
 
     const config: GenerateContentConfig = {};
@@ -192,7 +201,6 @@ class Gemini {
     });
 
     const responseId = generateId('gemini');
-    const toolCalls: ToolCall[] = [];
 
     for await (const chunk of streamResult) {
       const candidates = chunk.candidates;
@@ -200,6 +208,7 @@ class Gemini {
 
       const candidate = candidates[0];
       let content = '';
+      const chunkToolCalls: ToolCall[] = [];
 
       if (candidate.content?.parts) {
         for (const part of candidate.content.parts) {
@@ -218,7 +227,7 @@ class Gemini {
               name: part.functionCall.name || '',
               arguments: (part.functionCall.args as Record<string, unknown>) || {},
             };
-            toolCalls.push(toolCall);
+            chunkToolCalls.push(toolCall);
 
             // Call onToolCall callback
             if (options.onToolCall) {
@@ -234,7 +243,7 @@ class Gemini {
         model,
         delta: {
           content: content || undefined,
-          toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+          toolCalls: chunkToolCalls.length > 0 ? chunkToolCalls : undefined,
         },
         finishReason: candidate.finishReason ? this.mapFinishReason(candidate.finishReason) : undefined,
       };

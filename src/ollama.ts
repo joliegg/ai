@@ -16,7 +16,7 @@ class Ollama extends BaseOpenAI {
   }
 
   protected defaultModel(): MODEL {
-    return 'llama3.2';
+    return 'llama3.3';
   }
 
   protected defaultEmbeddingModel(): EMBEDDING_MODEL {

@@ -9,7 +9,7 @@ class Ollama extends base_openai_1.BaseOpenAI {
         super(apiKey || 'ollama', baseURL, config);
     }
     defaultModel() {
-        return 'llama3.2';
+        return 'llama3.3';
     }
     defaultEmbeddingModel() {
         return 'nomic-embed-text';

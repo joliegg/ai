@@ -52,10 +52,12 @@ const {
 class MockOpenAIClient {
   constructor() {
     this.apiKey = 'fake-key';
+    this.chatCalls = [];
     this.chat = {
       completions: {
         create: async (params) => {
           this.lastChatParams = params;
+          this.chatCalls.push(params);
 
           // Simulate streaming if stream: true
           if (params.stream) {
@@ -385,6 +387,133 @@ describe('ChatGPT Unit Tests', () => {
     assert.strictEqual(results[0].id, '1');
     assert.ok(results[0].response);
   });
+
+  it('should reject invalid batch concurrency', async () => {
+    const requests = [{ id: '1', messages: [{ role: 'user', content: 'Hello' }] }];
+    await assert.rejects(() => chatGPT.completeBatch(requests, {}, 0), /Concurrency must be a positive integer/);
+  });
+
+  it('should not throw when tool call arguments contain invalid JSON', async () => {
+    mockClient.chat.completions.create = async (params) => {
+      mockClient.lastChatParams = params;
+      return {
+        id: 'chatcmpl-invalid-tool-json',
+        model: params.model,
+        choices: [
+          {
+            message: {
+              content: null,
+              tool_calls: [
+                {
+                  id: 'call_1',
+                  type: 'function',
+                  function: { name: 'lookup', arguments: '{invalid json' },
+                },
+              ],
+            },
+            finish_reason: 'tool_calls',
+          },
+        ],
+        usage: {
+          prompt_tokens: 1,
+          completion_tokens: 1,
+          total_tokens: 2,
+        },
+      };
+    };
+
+    const result = await chatGPT.complete([{ role: 'user', content: 'Hello' }]);
+    assert.deepStrictEqual(result.toolCalls[0].arguments, {});
+  });
+
+  it('should send tool loop follow-up with assistant tool_calls and tool role messages', async () => {
+    let callCount = 0;
+    mockClient.chat.completions.create = async (params) => {
+      mockClient.lastChatParams = params;
+      mockClient.chatCalls.push(params);
+      callCount++;
+
+      if (callCount === 1) {
+        return {
+          id: 'chatcmpl-tool-1',
+          model: params.model,
+          choices: [
+            {
+              message: {
+                content: 'Calling tool',
+                tool_calls: [
+                  {
+                    id: 'call_weather',
+                    type: 'function',
+                    function: { name: 'get_weather', arguments: '{"city":"NYC"}' },
+                  },
+                ],
+              },
+              finish_reason: 'tool_calls',
+            },
+          ],
+          usage: {
+            prompt_tokens: 10,
+            completion_tokens: 5,
+            total_tokens: 15,
+          },
+        };
+      }
+
+      return {
+        id: 'chatcmpl-tool-2',
+        model: params.model,
+        choices: [
+          {
+            message: { content: 'Sunny', tool_calls: null },
+            finish_reason: 'stop',
+          },
+        ],
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 5,
+          total_tokens: 15,
+        },
+      };
+    };
+
+    const conv = createConversation(chatGPT);
+    await conv.runToolLoop('Weather?', {
+      toolHandler: async () => '72F and sunny',
+    });
+
+    const followUpMessages = mockClient.chatCalls[1].messages;
+    const assistantWithToolCall = followUpMessages.find((msg) =>
+      msg.role === 'assistant' && Array.isArray(msg.tool_calls) && msg.tool_calls.length === 1
+    );
+    const toolMessage = followUpMessages.find((msg) => msg.role === 'tool' && msg.tool_call_id === 'call_weather');
+
+    assert.ok(assistantWithToolCall, 'Expected assistant message with tool_calls in follow-up request');
+    assert.ok(toolMessage, 'Expected tool role message in follow-up request');
+    assert.strictEqual(toolMessage.content, '72F and sunny');
+  });
+
+  it('should reject audio URL content for OpenAI-compatible chat completions', async () => {
+    await assert.rejects(
+      () =>
+        chatGPT.complete([{
+          role: 'user',
+          content: [audioFromURL('https://example.com/audio.mp3')],
+        }]),
+      /Audio URL inputs are not supported/
+    );
+  });
+
+  it('should reject document URL content for OpenAI-compatible chat completions', async () => {
+    await assert.rejects(
+      () =>
+        chatGPT.complete([{
+          role: 'user',
+          content: [documentFromURL('https://example.com/doc.pdf')],
+        }]),
+      /Document URL inputs are not supported/
+    );
+  });
 });
 
 // =============================================================================
@@ -493,7 +622,7 @@ describe('Mistral Unit Tests', () => {
 
   it('should complete chat with correct default model', async () => {
     await mistral.complete([{ role: 'user', content: 'Hello' }]);
-    assert.strictEqual(mockClient.lastChatParams.model, 'mistral-large-latest');
+    assert.strictEqual(mockClient.lastChatParams.model, 'mistral-large-2511');
   });
 
   it('should return correct provider name', () => {
@@ -522,7 +651,7 @@ describe('Ollama Unit Tests', () => {
 
   it('should complete chat with correct default model', async () => {
     await ollama.complete([{ role: 'user', content: 'Hello' }]);
-    assert.strictEqual(mockClient.lastChatParams.model, 'llama3.2');
+    assert.strictEqual(mockClient.lastChatParams.model, 'llama3.3');
   });
 
   it('should return correct provider name', () => {
@@ -546,7 +675,7 @@ describe('Qwen Unit Tests', () => {
 
   it('should complete chat with correct default model', async () => {
     await qwen.complete([{ role: 'user', content: 'Hello' }]);
-    assert.strictEqual(mockClient.lastChatParams.model, 'qwen-plus');
+    assert.strictEqual(mockClient.lastChatParams.model, 'qwen-max-latest');
   });
 
   it('should return correct provider name', () => {
@@ -575,7 +704,7 @@ describe('Kimi Unit Tests', () => {
 
   it('should complete chat with correct default model', async () => {
     await kimi.complete([{ role: 'user', content: 'Hello' }]);
-    assert.strictEqual(mockClient.lastChatParams.model, 'kimi-k2.5');
+    assert.strictEqual(mockClient.lastChatParams.model, 'kimi-k2-thinking');
   });
 
   it('should return correct provider name', () => {
@@ -801,6 +930,57 @@ describe('Unified Interface Tests', () => {
     }
 
     assert.deepStrictEqual(tokens, ['Hello', ' World']);
+  });
+
+  it('should not throw when streamed tool call arguments contain invalid JSON', async () => {
+    mockClient.chat.completions.create = async (params) => {
+      if (!params.stream) {
+        return {
+          id: 'chatcmpl-123',
+          model: params.model,
+          choices: [{ message: { content: 'ok', tool_calls: null }, finish_reason: 'stop' }],
+          usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+        };
+      }
+
+      return {
+        async *[Symbol.asyncIterator]() {
+          yield {
+            id: 'chatcmpl-stream-bad-json',
+            model: params.model,
+            choices: [
+              {
+                delta: {
+                  tool_calls: [
+                    {
+                      index: 0,
+                      id: 'call_1',
+                      function: { name: 'lookup', arguments: '{bad_json' },
+                    },
+                  ],
+                },
+                finish_reason: null,
+              },
+            ],
+          };
+          yield {
+            id: 'chatcmpl-stream-bad-json',
+            model: params.model,
+            choices: [{ delta: {}, finish_reason: 'tool_calls' }],
+          };
+        },
+      };
+    };
+
+    const toolCalls = [];
+    for await (const _ of chatGPT.stream([{ role: 'user', content: 'Hello' }], {
+      onToolCall: (tc) => toolCalls.push(tc),
+    })) {
+      // consume stream
+    }
+
+    assert.strictEqual(toolCalls.length, 1);
+    assert.deepStrictEqual(toolCalls[0].arguments, {});
   });
 });
 
@@ -1204,9 +1384,9 @@ describe('Gemini Feature Tests', () => {
     gemini._client = mockClient;
   });
 
-  it('should use gemini-2.5-pro as default model', async () => {
+  it('should use gemini-3-pro-preview as default model', async () => {
     await gemini.complete([{ role: 'user', content: 'Hello' }]);
-    assert.strictEqual(mockClient.lastGenerateParams.model, 'gemini-2.5-pro');
+    assert.strictEqual(mockClient.lastGenerateParams.model, 'gemini-3-pro-preview');
   });
 
   it('should set responseMimeType for JSON mode', async () => {
@@ -1258,6 +1438,39 @@ describe('Gemini Feature Tests', () => {
     assert.ok(tools.some((t) => t.functionDeclarations));
     assert.ok(tools.some((t) => t.googleSearchRetrieval));
     assert.ok(tools.some((t) => t.codeExecution));
+  });
+
+  it('should emit only chunk-local tool calls in stream chunks', async () => {
+    mockClient.models.generateContentStream = async function* () {
+      yield {
+        candidates: [
+          {
+            content: {
+              parts: [{ functionCall: { name: 'search', args: { q: 'test' } } }],
+            },
+          },
+        ],
+      };
+      yield {
+        candidates: [
+          {
+            content: {
+              parts: [{ text: 'done' }],
+            },
+            finishReason: 'STOP',
+          },
+        ],
+      };
+    };
+
+    const chunks = [];
+    for await (const chunk of gemini.stream([{ role: 'user', content: 'Hello' }])) {
+      chunks.push(chunk);
+    }
+
+    assert.ok(chunks[0].delta.toolCalls);
+    assert.strictEqual(chunks[0].delta.toolCalls.length, 1);
+    assert.strictEqual(chunks[1].delta.toolCalls, undefined);
   });
 });
 

@@ -3,7 +3,26 @@ import {
   ProviderConfig,
 } from './types';
 
-export type MODEL = 'mistral-large-latest' | 'mistral-medium-latest' | 'mistral-small-latest' | 'magistral-medium-latest' | 'magistral-small-latest' | 'codestral-latest' | 'devstral-small-latest' | 'ministral-8b-latest' | 'pixtral-large-latest' | 'open-mistral-nemo' | (string & {});
+export type MODEL =
+  | 'mistral-large-latest'
+  | 'mistral-large-2511'
+  | 'mistral-medium-latest'
+  | 'mistral-medium-2508'
+  | 'mistral-small-latest'
+  | 'mistral-small-2506'
+  | 'magistral-medium-latest'
+  | 'magistral-medium-2509'
+  | 'magistral-small-latest'
+  | 'magistral-small-2509'
+  | 'codestral-latest'
+  | 'devstral-small-latest'
+  | 'devstral-medium-2507'
+  | 'ministral-8b-latest'
+  | 'ministral-8b-2410'
+  | 'ministral-3b-2410'
+  | 'pixtral-large-latest'
+  | 'open-mistral-nemo'
+  | (string & {});
 export type EMBEDDING_MODEL = 'mistral-embed' | (string & {});
 
 class Mistral extends BaseOpenAI {
@@ -15,7 +34,7 @@ class Mistral extends BaseOpenAI {
   }
 
   protected defaultModel(): MODEL {
-    return 'mistral-large-latest';
+    return 'mistral-large-2511';
   }
 
   protected defaultEmbeddingModel(): EMBEDDING_MODEL {

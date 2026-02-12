@@ -30,6 +30,7 @@ export declare abstract class BaseOpenAI {
     }): Promise<Buffer[]>;
     protected defaultModel(): string;
     protected defaultEmbeddingModel(): string;
+    protected safeParseJson(value: string): Record<string, unknown>;
     protected convertToOpenAIMessages(messages: Message[]): ChatCompletionMessageParam[];
     protected convertToOpenAITools(tools: ToolDefinition[]): OpenAI.Chat.Completions.ChatCompletionTool[];
     protected convertToolChoice(choice: 'auto' | 'none' | 'required' | {

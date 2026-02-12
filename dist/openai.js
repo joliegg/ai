@@ -335,6 +335,9 @@ class ChatGPT extends base_openai_1.BaseOpenAI {
      * @param concurrency - Max concurrent requests (default: 5)
      */
     async completeBatch(requests, options = {}, concurrency = 5) {
+        if (!Number.isInteger(concurrency) || concurrency < 1) {
+            throw new errors_1.AIError('Concurrency must be a positive integer', this._provider, 'INVALID_CONCURRENCY', 400);
+        }
         const results = [];
         const queue = [...requests];
         const processRequest = async (request) => {

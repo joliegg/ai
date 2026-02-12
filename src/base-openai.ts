@@ -4,6 +4,7 @@ import { ImageGenerateParams } from 'openai/resources/images';
 import { Stream } from 'openai/streaming';
 import {
   Message,
+  MessageContent,
   Response,
   Chunk,
   CompletionOptions,
@@ -61,7 +62,7 @@ export abstract class BaseOpenAI {
       const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
         model,
         messages: openAIMessages,
-        max_tokens: options.maxTokens,
+        max_completion_tokens: options.maxTokens,
         temperature: options.temperature,
         top_p: options.topP,
         stop: options.stop,
@@ -112,7 +113,7 @@ export abstract class BaseOpenAI {
     const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
       model,
       messages: openAIMessages,
-      max_tokens: options.maxTokens,
+      max_completion_tokens: options.maxTokens,
       temperature: options.temperature,
       top_p: options.topP,
       stop: options.stop,
@@ -186,7 +187,7 @@ export abstract class BaseOpenAI {
           options.onToolCall({
             id: toolCall.id,
             name: toolCall.name,
-            arguments: toolCall.argumentsJson ? JSON.parse(toolCall.argumentsJson) : {},
+            arguments: toolCall.argumentsJson ? this.safeParseJson(toolCall.argumentsJson) : {},
           });
         }
       }
@@ -298,28 +299,71 @@ export abstract class BaseOpenAI {
     return 'text-embedding-3-small';
   }
 
+  protected safeParseJson(value: string): Record<string, unknown> {
+    try {
+      const parsed = JSON.parse(value);
+      if (parsed && typeof parsed === 'object') {
+        return parsed as Record<string, unknown>;
+      }
+      return {};
+    } catch {
+      return {};
+    }
+  }
+
   protected convertToOpenAIMessages(messages: Message[]): ChatCompletionMessageParam[] {
-    return messages.map((msg): ChatCompletionMessageParam => {
+    return messages.flatMap((msg): ChatCompletionMessageParam[] => {
+      if (msg.role === 'tool') {
+        const toolResults = Array.isArray(msg.content)
+          ? msg.content.filter(
+            (part): part is Extract<MessageContent, { type: 'tool_result' }> =>
+              typeof part !== 'string' && part.type === 'tool_result'
+          )
+          : typeof msg.content !== 'string' && msg.content.type === 'tool_result'
+            ? [msg.content]
+            : [];
+
+        return toolResults.map((result) => ({
+          role: 'tool',
+          content: result.content,
+          tool_call_id: result.toolUseId,
+        })) as ChatCompletionMessageParam[];
+      }
+
       // Handle string content
       if (typeof msg.content === 'string') {
-        return {
+        return [{
           role: msg.role as 'system' | 'user' | 'assistant',
           content: msg.content,
-        };
+        }];
       }
 
       // Handle array content (multimodal)
       if (Array.isArray(msg.content)) {
+        const textParts: string[] = [];
+        const assistantToolCalls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] = [];
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const parts: any[] = msg.content.map((part) => {
+        const parts: any[] = [];
+
+        for (const part of msg.content) {
           if (typeof part === 'string') {
-            return { type: 'text' as const, text: part };
+            if (msg.role === 'assistant') {
+              textParts.push(part);
+              continue;
+            }
+            parts.push({ type: 'text' as const, text: part });
+            continue;
           }
           if (part.type === 'text') {
-            return { type: 'text' as const, text: part.text };
+            if (msg.role === 'assistant') {
+              textParts.push(part.text);
+              continue;
+            }
+            parts.push({ type: 'text' as const, text: part.text });
+            continue;
           }
           if (part.type === 'image') {
-            return {
+            parts.push({
               type: 'image_url' as const,
               image_url: {
                 url:
@@ -327,52 +371,117 @@ export abstract class BaseOpenAI {
                     ? part.source.data
                     : `data:${part.source.mediaType || 'image/png'};base64,${part.source.data}`,
               },
-            };
+            });
+            continue;
           }
           if (part.type === 'audio') {
+            if (part.source.type === 'url') {
+              throw new AIError(
+                'Audio URL inputs are not supported by OpenAI-compatible chat completions. Use base64 audio data.',
+                this._provider,
+                'INVALID_REQUEST',
+                400
+              );
+            }
             // OpenAI GPT-4o audio input format
-            return {
+            parts.push({
               type: 'input_audio' as const,
               input_audio: {
                 data: part.source.data,
                 format: part.source.mediaType?.includes('wav') ? 'wav' : 'mp3',
               },
-            };
+            });
+            continue;
           }
           if (part.type === 'document') {
+            if (part.source.type === 'url') {
+              throw new AIError(
+                'Document URL inputs are not supported by OpenAI-compatible chat completions. Use base64 document data.',
+                this._provider,
+                'INVALID_REQUEST',
+                400
+              );
+            }
             // For documents, we include them as file content
             // OpenAI supports PDF and other documents in certain contexts
-            return {
+            parts.push({
               type: 'file' as const,
               file: {
                 file_data: `data:${part.source.mediaType || 'application/pdf'};base64,${part.source.data}`,
                 filename: part.source.filename,
               },
-            };
+            });
+            continue;
           }
-          // Tool use/result - handled separately
-          return { type: 'text' as const, text: '' };
-        });
+          if (part.type === 'tool_use' && msg.role === 'assistant') {
+            assistantToolCalls.push({
+              id: part.id,
+              type: 'function',
+              function: {
+                name: part.name,
+                arguments: JSON.stringify(part.input ?? {}),
+              },
+            });
+            continue;
+          }
+          // Tool use/result and unsupported parts are handled elsewhere or ignored
+        }
 
-        return {
-          role: msg.role as 'user',
+        if (msg.role === 'assistant') {
+          const assistantMessage: OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam = {
+            role: 'assistant',
+            content: textParts.join(''),
+          };
+          if (assistantToolCalls.length > 0) {
+            assistantMessage.tool_calls = assistantToolCalls;
+          }
+          return [assistantMessage as ChatCompletionMessageParam];
+        }
+
+        return [{
+          role: msg.role as 'system' | 'user',
           content: parts,
-        };
+        }];
       }
 
       // Handle single content object
       const content = msg.content;
       if (content.type === 'text') {
-        return {
+        return [{
           role: msg.role as 'system' | 'user' | 'assistant',
           content: content.text,
-        };
+        }];
       }
 
-      return {
+      if (content.type === 'tool_result') {
+        return [{
+          role: 'tool',
+          content: content.content,
+          tool_call_id: content.toolUseId,
+        } as ChatCompletionMessageParam];
+      }
+
+      if (content.type === 'tool_use' && msg.role === 'assistant') {
+        return [{
+          role: 'assistant',
+          content: '',
+          tool_calls: [
+            {
+              id: content.id,
+              type: 'function',
+              function: {
+                name: content.name,
+                arguments: JSON.stringify(content.input ?? {}),
+              },
+            },
+          ],
+        } as ChatCompletionMessageParam];
+      }
+
+      return [{
         role: msg.role as 'system' | 'user' | 'assistant',
         content: '',
-      };
+      }];
     });
   }
 
@@ -407,7 +516,7 @@ export abstract class BaseOpenAI {
       return {
         id: tc.id,
         name: func?.name ?? '',
-        arguments: func?.arguments ? JSON.parse(func.arguments) : {},
+        arguments: func?.arguments ? this.safeParseJson(func.arguments) : {},
       };
     });
 

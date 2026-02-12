@@ -8,7 +8,7 @@ class Kimi extends base_openai_1.BaseOpenAI {
         super(resolvedApiKey, 'https://api.moonshot.ai/v1', config);
     }
     defaultModel() {
-        return 'kimi-k2.5';
+        return 'kimi-k2-thinking';
     }
 }
 exports.default = Kimi;

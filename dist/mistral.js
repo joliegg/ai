@@ -8,7 +8,7 @@ class Mistral extends base_openai_1.BaseOpenAI {
         super(resolvedApiKey, 'https://api.mistral.ai/v1', config);
     }
     defaultModel() {
-        return 'mistral-large-latest';
+        return 'mistral-large-2511';
     }
     defaultEmbeddingModel() {
         return 'mistral-embed';

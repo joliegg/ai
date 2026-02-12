@@ -32,7 +32,7 @@ class Gemini {
      * Generate a chat completion
      */
     async complete(messages, options = {}) {
-        const model = options.model || 'gemini-2.5-pro';
+        const model = options.model || 'gemini-3-pro-preview';
         const { systemInstruction, contents } = this.convertToGeminiMessages(messages);
         const fn = async () => {
             const config = {};
@@ -96,7 +96,7 @@ class Gemini {
      * Stream completions
      */
     async *stream(messages, options = {}) {
-        const model = options.model || 'gemini-2.5-pro';
+        const model = options.model || 'gemini-3-pro-preview';
         const { systemInstruction, contents } = this.convertToGeminiMessages(messages);
         const config = {};
         if (options.maxTokens)
@@ -144,13 +144,13 @@ class Gemini {
             config,
         });
         const responseId = (0, utils_1.generateId)('gemini');
-        const toolCalls = [];
         for await (const chunk of streamResult) {
             const candidates = chunk.candidates;
             if (!candidates || candidates.length === 0)
                 continue;
             const candidate = candidates[0];
             let content = '';
+            const chunkToolCalls = [];
             if (candidate.content?.parts) {
                 for (const part of candidate.content.parts) {
                     if (part.text) {
@@ -166,7 +166,7 @@ class Gemini {
                             name: part.functionCall.name || '',
                             arguments: part.functionCall.args || {},
                         };
-                        toolCalls.push(toolCall);
+                        chunkToolCalls.push(toolCall);
                         // Call onToolCall callback
                         if (options.onToolCall) {
                             options.onToolCall(toolCall);
@@ -180,7 +180,7 @@ class Gemini {
                 model,
                 delta: {
                     content: content || undefined,
-                    toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+                    toolCalls: chunkToolCalls.length > 0 ? chunkToolCalls : undefined,
                 },
                 finishReason: candidate.finishReason ? this.mapFinishReason(candidate.finishReason) : undefined,
             };

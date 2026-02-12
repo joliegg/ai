@@ -325,7 +325,7 @@ const response2 = await gemini.complete(
     { role: 'assistant', content: 'Hi there!' },
     { role: 'user', content: 'What is the capital of France?' },
   ],
-  { model: 'gemini-2.5-pro' }
+  { model: 'gemini-3-pro-preview' }
 );
 
 // Embeddings
@@ -341,7 +341,7 @@ const deepSeek = new DeepSeek('your-deepseek-api-key');
 
 // Chat completion
 const response = await deepSeek.complete([{ role: 'user', content: 'Write a Python function for binary search' }], {
-  model: 'deepseek-coder',
+  model: 'deepseek-chat',
   maxTokens: 500,
 });
 
@@ -379,7 +379,7 @@ const mistral = new Mistral('your-mistral-api-key');
 
 // Chat completion
 const response = await mistral.complete([{ role: 'user', content: 'Explain neural networks' }], {
-  model: 'mistral-large-latest',
+  model: 'mistral-large-2511',
 });
 
 // Embeddings
@@ -408,7 +408,7 @@ const ollama2 = new Ollama(undefined, {
 
 // Chat completion with local model
 const response = await ollama.complete([{ role: 'user', content: 'Hello!' }], {
-  model: 'llama3.2',
+  model: 'llama3.3',
 });
 
 // Streaming
@@ -431,7 +431,7 @@ const qwen = new Qwen('your-dashscope-api-key');
 
 // Chat completion
 const response = await qwen.complete([{ role: 'user', content: 'Explain distributed systems' }], {
-  model: 'qwen-plus', // or 'qwen3-max', 'qwen-turbo', 'qwen-flash', 'qwq-plus'
+  model: 'qwen-max-latest', // or 'qwen3-max', 'qwen-plus', 'qwen-turbo', 'qwen-flash', 'qwq-plus'
 });
 
 // Streaming
@@ -454,7 +454,7 @@ const kimi = new Kimi('your-moonshot-api-key');
 
 // Chat completion
 const response = await kimi.complete([{ role: 'user', content: 'What is quantum entanglement?' }], {
-  model: 'kimi-k2.5',
+  model: 'kimi-k2-thinking',
 });
 
 // Streaming
@@ -1383,15 +1383,15 @@ import type {
 
 | Provider | Models                                                                              |
 | -------- | ----------------------------------------------------------------------------------- |
-| OpenAI   | `gpt-5.2` (default), `gpt-4o`, `gpt-4o-mini`, `o3-mini`, `o1-preview`              |
-| Claude   | `claude-sonnet-4-5-20250929` (default), `claude-opus-4-20250514`, `claude-sonnet-4-0` |
-| Gemini   | `gemini-2.5-pro` (default), `gemini-2.0-pro`, `gemini-1.5-pro`                      |
-| DeepSeek | `deepseek-reasoner` (default), `deepseek-chat`, `deepseek-coder`                    |
+| OpenAI   | `gpt-5.2` (default), `gpt-5`, `gpt-5-mini`, `gpt-4o`, `gpt-4o-mini`, `o3-mini`      |
+| Claude   | `claude-sonnet-4-0` (default), `claude-opus-4-1`, `claude-3-7-sonnet-latest`         |
+| Gemini   | `gemini-3-pro-preview` (default), `gemini-3-flash-preview`, `gemini-2.5-pro`         |
+| DeepSeek | `deepseek-reasoner` (default), `deepseek-chat`                                      |
 | Grok     | `grok-4-1-fast-reasoning` (default), `grok-4`, `grok-4-1-fast-non-reasoning`       |
-| Mistral  | `mistral-large-latest` (default), `mistral-medium`, `mistral-small`                 |
-| Ollama   | `llama3.2` (default), any pulled model                                              |
-| Qwen     | `qwen-plus` (default), `qwen3-max`, `qwen-turbo`, `qwen-flash`, `qwq-plus`        |
-| Kimi     | `kimi-k2.5` (default), `kimi-k2-thinking`, `kimi-k2-thinking-turbo`                |
+| Mistral  | `mistral-large-2511` (default), `mistral-large-latest`, `mistral-medium-latest`     |
+| Ollama   | `llama3.3` (default), any pulled model                                              |
+| Qwen     | `qwen-max-latest` (default), `qwen3-max`, `qwen-plus`, `qwen-turbo`, `qwen-flash`  |
+| Kimi     | `kimi-k2-thinking` (default), `kimi-k2-thinking-turbo`, `kimi-k2.5`                |
 
 ### Image Models
 

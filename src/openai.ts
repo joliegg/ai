@@ -413,6 +413,10 @@ class ChatGPT extends BaseOpenAI {
     options: Partial<CompletionOptions> = {},
     concurrency: number = 5
   ): Promise<BatchResponse[]> {
+    if (!Number.isInteger(concurrency) || concurrency < 1) {
+      throw new AIError('Concurrency must be a positive integer', this._provider, 'INVALID_CONCURRENCY', 400);
+    }
+
     const results: BatchResponse[] = [];
     const queue = [...requests];
 

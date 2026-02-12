@@ -8,7 +8,7 @@ class Qwen extends base_openai_1.BaseOpenAI {
         super(resolvedApiKey, 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1', config);
     }
     defaultModel() {
-        return 'qwen-plus';
+        return 'qwen-max-latest';
     }
     defaultEmbeddingModel() {
         return 'text-embedding-v4';

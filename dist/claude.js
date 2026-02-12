@@ -40,7 +40,7 @@ class Claude {
         if (!this._client) {
             throw new errors_1.AIError('Anthropic client not initialized', this._provider);
         }
-        const model = options.model || 'claude-sonnet-4-5-20250929';
+        const model = options.model || 'claude-sonnet-4-0';
         const { systemPrompt, claudeMessages } = this.convertToClaudeMessages(messages);
         const fn = async () => {
             const params = {
@@ -90,7 +90,7 @@ class Claude {
         if (!this._client) {
             throw new errors_1.AIError('Anthropic client not initialized', this._provider);
         }
-        const model = options.model || 'claude-sonnet-4-5-20250929';
+        const model = options.model || 'claude-sonnet-4-0';
         const { systemPrompt, claudeMessages } = this.convertToClaudeMessages(messages);
         const params = {
             model,
